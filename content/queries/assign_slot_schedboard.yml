@@ -1,0 +1,316 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      SELECT     tblSvcOrder.SvcOrderID, tblSvcOrder.CustID, tblSvcOrder.CustSiteID, tblSvcOrder.ShortDesc, tblSvcOrder.IsInstall, tblSvcOrder.ContactName,
+                            tblSvcOrder.Instructions, tblSvcOrder.DatePromised, tblSvcOrder.TimeFromPromised, tblSvcOrder.TimeToPromised, tblSvcOrder.SvcDateAdded,
+                            tblSvcOrder.SvcTimeAdded, tblSvcOrder.SvcUserAdded, tblSvcOrder.Priority, tblSvcOrder.SvcTypeID, tblSvcOrder.Status, tblSvcOrder.TaxGrpID,
+                            tblSvcOrder.RateTableID, tblCustomer.CustName, tblCustomer.Contact AS CustContact, tblCustomerSite.SiteName,
+                            tblCustomerSite.Address2 AS SiteAdd, tblCustomerSite.Contact AS SiteContact, tblCustomerSite.Phone AS SitePhone,
+                            tblCustomerSite.AltPhone AS SiteAltPhone, tblCustomerSite.Email AS SiteEmail, tblEmployee.EmpName AS TakenBy, tblCustomerSite.City,
+                            tblCustomerSite.State, tblCustomerSite.PostalCode, ISNULL(tblCustSiteResident.FirstName + ' ', '') + ISNULL(tblCustSiteResident.LastName, '')
+                            AS ResidentName, tblSvcOrder.AgrmntID, tblSvcOrder.CustEquipID, tblSvcOrder.SvcAmount, tblSvcOrder.SvcAmtBilled, tblSvcOrder.LocationID,
+                            tblSvcOrder.SubStatusID, tblSvcOrder.CustPO, tblCustEquip.PartID AS EquipName, tblCustEquip.ModelNum AS EquipModelNum,
+                            tblCustEquip.SerialNum AS EquipSerialNum, tblCustEquip.EquipLocation, tblSvcOrder.ResidentID,
+                            tblSvcProblems.ProblemCode, tblSvcOrderProblems.ProblemDesc, tblSvcOrderProblems.EstRepairTime, tblSvcOrder.CustEquipIDList, tblSvcOrder.CustEquipNameList
+      FROM         tblSvcOrder INNER JOIN
+                            tblCustomer ON tblSvcOrder.CustID = tblCustomer.CustID INNER JOIN
+                            tblCustomerSite ON tblSvcOrder.CustSiteID = tblCustomerSite.CustSiteID LEFT OUTER JOIN
+                            tblCustEquip ON tblSvcOrder.CustEquipID = tblCustEquip.CustEquipID LEFT OUTER JOIN
+                            tblEmployee ON tblSvcOrder.SvcUserAdded = tblEmployee.EmployeeID LEFT OUTER JOIN
+                            tblCustSiteResident ON tblSvcOrder.ResidentID = tblCustSiteResident.ResidentID LEFT OUTER JOIN
+                            tblSvcOrderProblems ON tblSvcOrder.SvcOrderID = tblSvcOrderProblems.SvcOrderID AND tblSvcOrderProblems.SvcProblemID =
+                                (SELECT     TOP 1 SvcProblemID
+                                  FROM          tblSvcOrderProblems
+                                  WHERE      (tblSvcOrderProblems.SvcOrderID = tblSvcOrder.SvcOrderID)) LEFT OUTER JOIN
+                            tblSvcProblems ON tblSvcOrderProblems.ProblemID = tblSvcProblems.ProblemID
+      WHERE  (1=1)
+      AND (tblSvcOrder.SvcOrderID=1000107)
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      SELECT 
+          SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+          IsActive, dbo.[GetRowStamp](RecordID) AS RecordID
+        FROM
+          dbo.tblSchedSubStatus
+
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblSvcOrderSched (
+      "SvcOrderID", "TechID", "EstRepairTime", "SchedDate", "StartTime", "EndTime", "Status", "SchedSubStatusID", "Priority", "SlotType",
+       "SlotOptions", "SlotParentID", "SlotRecurrenceIndex", "SlotRecurrenceInfo", "SlotReminderDisabled", "SlotMessage", "SlotRecurrEndDate",
+        "UserCreated", "TimeCreated", "UserModified", "TimeModified", "ResidentID", "SvcDetailID", "InvoiceDesc", "BillableHours", 
+        "PayTypeID", "OvertimePayTypeID", "EmpPayTypeInfo", "EmpRegularBillHrs", "EmpOvertimeBillHrs", "EmpRegularActualHrs", "EmpOvertimeActualHrs",
+         "EmpWeekendBillHrs", "EmpHolidayBillHrs", "EmpWeekendActualHrs", "EmpHolidayActualHrs", "LaborHours", "ChargeCrewTech", "ShowInvCrewTech", 
+         "InRecurrence", "Sync", "RepairCodeID", "RepairDesc", "TechNote", "CancelReason", "TechList", "CustSignature", "NameOfSig", "AgrmntSchedID", 
+         "ToBeInvoiced", "FollowUpRequired", "FollowUpSchedID", "FollowUpRepairCodeID", "FollowUpMsg", "SubItemGroupID", "TotalTravelTime", "TotalTravelDistance", 
+         "EquipID", "CustEquipIDList", "CustEquipNameList")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, @P13, @P14, @P15, @P16, @P17, @P18, @P19, @P20, @P21, @P22, @P23,
+      @P24, @P25, @P26, @P27, @P28, @P29, @P30, @P31, @P32, @P33, @P34, @P35, @P36, @P37, @P38, @P39, @P40, @P41, @P42, @P43, @P44, @P45, @P46, @P47, @P48, 
+      @P49, @P50, @P51, @P52, @P53, @P54, @P55, @P56, @P57, @P58, @P59, @P60)',N'@P1 int,@P2 int,@P3 float,@P4 datetime2(7),@P5 datetime2(7),@P6 datetime2(7),
+      @P7 int,@P8 int,@P9 int,@P10 int,@P11 int,@P12 int,@P13 int,@P14 varbinary(8000),@P15bit,@P16 varchar(8000),@P17 datetime2(7),@P18 varchar(8000),
+      @P19 datetime2(7),@P20 varchar(8000),@P21 datetime2(7),@P22 int,@P23 int,@P24 varchar(8000),@P25 float,@P26 int,@P27 int,@P28 varchar(8000),
+      @P29 varchar(8000),@P30 varchar(8000),@P31 varchar(8000),@P32 varchar(8000),@P33 varchar(8000),@P34 varchar(8000),@P35 varchar(8000),@P36 varchar(8000),
+      @P37 varchar(8000),@P38 varchar(8000),@P39 varchar(8000),@P40 bit,@P41 bit,@P42 int,@P43 varchar(8000),@P44 varchar(8000),@P45 varchar(8000),
+      @P46 varchar(8000),@P47 varbinary(8000),@P48 varchar(8000),@P49 int,@P50 bit,@P51 bit,@P52 int,@P53 int,@P54 varchar(8000),@P55 int,@P56 float,
+      @P57 float,@P58 int,@P59 varchar(8000),@P60 varchar(8000)',1000107,NULL,NULL,'2025-12-05 00:00:00','2025-12-05 10:00:00','2025-12-05 14:00:00',
+      2,NULL,NULL,0,6,NULL,-1,0x,NULL,NULL,NULL,'Admin','2025-12-05 01:08:01.2660000',NULL,NULL,NULL,NULL,'.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+      NULL,NULL,NULL,NULL,'',NULL,NULL,0,NULL,1,NULL,NULL,NULL,'10009',0x,NULL,NULL,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+
+  - id: q4
+    title: "Query 4"
+    sql: |      
+      exec sp_executesql N'DECLARE @ScheduleID int
+      SET @ScheduleID = @P1
+
+      DELETE tblSvcOrderSchedTech
+      WHERE ScheduleID = @ScheduleID
+
+      INSERT INTO tblSvcOrderSchedTech (ScheduleID, EmployeeID, TimeCreated)
+      SELECT @ScheduleID, RecID, GETDATE() FROM dbo.[fnGetStringTempTbl](@P2)',N'@P1 
+      int,@P2 nvarchar(4000)',347065,N'10009'
+
+
+  - id: q5
+    title: "Query 5"
+    sql: |  
+      exec sp_executesql N'EXEC [spSvcOrderSched_IUD] @P1,@P2,@P3,@P4,
+      @P5,@P6,@P7,@P8,@P9,@P10,@P11,@P12,@P13,
+      @P14,@P15,@P16,@P17',N'@P1 varchar(100),@P2 varchar(100),
+      @P3 varchar(100),@P4 varchar(100),@P5 varchar(100),@P6 varchar(100),@P7 varchar(100),
+      @P8 varchar(100),@P9 varchar(100),@P10 varchar(100),@P11 varchar(100),@P12 varchar(100),
+      @P13 varchar(100),@P14 char(1),@P15 varchar(100),@P16 int,@P17 int','347065','-1','2025-12-05 10:00:00',
+      NULL,NULL,'2025-12-05 14:00:00',NULL,'2','','10009',NULL,NULL,'1000107','I',NULL,1,1
+
+  - id: q6
+    title: "Query 6"
+    sql: | 
+      exec [sys].sp_describe_undeclared_parameters N'INSERT INTO tblSvcSchedTimestamp (ChangeType, ScheduleID, SvcOrderID, StartTime, EndTime,
+            Status, SchedSubStatusID, TechList, UserCreated, TimeCreated, DeviceType)
+      SELECT @P1, @P2, @P3, @P4, @P5,
+            @P6, @P7, @P8, @P9, GETDATE(), @P10'
+
+  - id: q7
+    title: "Query 7"
+    sql: | 
+      SELECT
+      ReportsSchedID, ReportType, ReportID, SchedDay, SchedTime, Sched.EmployeeID, Email,
+        CASE ReportType
+          WHEN 1 THEN (SELECT ReportName COLLATE Latin1_General_CI_AS FROM StarTechMain.dbo.tblReports WHERE ReportID = Sched.ReportID)
+          WHEN 2 THEN (SELECT ReportName COLLATE Latin1_General_CI_AS FROM tblReports WHERE ReportID = Sched.ReportID)
+        END AS ReportName,
+        CASE SchedDay
+          WHEN 0 THEN ('Daily')
+          ELSE (DATENAME(WEEKDAY, DATEADD(DAY, SchedDay, '01/01/2000')))
+        END AS SchedDayName
+      FROM tblReportsSched AS Sched
+      JOIN tblEmployee ON Sched.EmployeeID = tblEmployee.EmployeeID
+      WHERE ISNULL(Email, '') != '' AND
+      SchedDay IN(0, DATEPART(WEEKDAY, GETDATE())) AND
+      (	(DATEPART(HOUR, GETDATE()) = DATEPART(HOUR, SchedTime) AND DATEPART(MINUTE, GETDATE()) >= DATEPART(MINUTE, SchedTime)) OR
+        (DATEPART(HOUR, GETDATE()) > DATEPART(HOUR, SchedTime))) AND
+      DATEDIFF(DAY, ISNULL(SchedRun, DATEADD(DAY, -1, GETDATE())), GETDATE()) > 0
+
+  - id: q8
+    title: "Query 8"
+    sql: | 
+      SELECT * FROM [vuCreateCustomerNotificationList]
+
+  - id: q9
+    title: "Query 9"
+    sql: | 
+      /*
+      DECLARE @DaysToAdd INT;
+      DECLARE @ReTryDays INT;
+      DECLARE @SendPaymentReceived Bit;
+      SET @DaysToAdd = (SELECT TOP 1 ISNULL(CreateAgrmntInvoiceDays, 0) FROM tblCompanyPreference)
+      SET @ReTryDays = (SELECT TOP 1 ISNULL(FailedInvoicesRetry, 0) FROM tblCompanyPreference);
+      SET @SendPaymentReceived = (SELECT TOP 1 ISNULL(PaymentReceived, 0) FROM tblCompanyPreference);
+      --if  @SendPaymentReceived value 0 then and tblAgrmntBilling.InvoiceID not in (select invoiceId from tblpaymentdetail)  else nothing
+      IF ( @ReTryDays >0 )
+      BEGIN
+      SELECT  top 10 dbo.tblAgrmntBilling.AgrmnInvID, dbo.tblAgrmntBilling.AgrmntID, dbo.tblCustomer.Email, dbo.tblAgreement.AutoEmailInvoices,tblAgrmntBilling.InvoiceID
+      FROM         dbo.tblAgrmntBilling INNER JOIN
+                  dbo.tblAgreement ON dbo.tblAgrmntBilling.AgrmntID = dbo.tblAgreement.AgrmntID INNER JOIN
+                  dbo.tblCustomer ON dbo.tblAgreement.CustID = dbo.tblCustomer.CustID
+      WHERE     (dbo.tblAgrmntBilling.InvDate <= DATEADD(day, @DaysToAdd, GETDATE())) AND
+                Isnull(dbo.tblAgrmntBilling.InvoiceID,0)<>0 AND  isnull(AutoEmailInvoices,0)=1 and*/
+        --(dbo.tblAgreement.Status IN (2, 3)) /* Comented by Paritosh and added below new condition*/
+      /*	 (((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) = 0 and dbo.tblAgreement.Status in (2,3))
+                or ((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) =1 and dbo.tblAgreement.Status not in (2)))
+
+              AND (SELECT COUNT(*) FROM dbo.tblAgrmntCharges WHERE dbo.tblAgrmntCharges.AgrmntID = dbo.tblAgrmntBilling.AgrmntID) <> 0
+          and dbo.tblAgrmntBilling.InvoiceID not in (select transid from tblEmailList where TransType='AutoEmailInvoice' )
+          and  (dbo.tblAgrmntBilling.InvDate>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567) or
+            dbo.tblAgreement.TimeCreated>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567))
+                and tblAgrmntBilling.InvoiceID not in (
+          case when  @SendPaymentReceived=0 then (select top 1 invoiceId from tblpaymentdetail where invoiceID=tblAgrmntBilling.InvoiceID) else 0 end
+          )
+          -- order by dbo.tblAgrmntBilling.AgrmnInvID desc
+      union
+
+      SELECT  top 10 dbo.tblAgrmntBilling.AgrmnInvID, dbo.tblAgrmntBilling.AgrmntID, dbo.tblCustomer.Email, dbo.tblAgreement.AutoEmailInvoices,tblAgrmntBilling.InvoiceID
+      FROM         dbo.tblAgrmntBilling INNER JOIN
+                  dbo.tblAgreement ON dbo.tblAgrmntBilling.AgrmntID = dbo.tblAgreement.AgrmntID INNER JOIN
+                  dbo.tblCustomer ON dbo.tblAgreement.CustID = dbo.tblCustomer.CustID
+      WHERE     (dbo.tblAgrmntBilling.InvDate <= DATEADD(day, @DaysToAdd, GETDATE())) AND
+                Isnull(dbo.tblAgrmntBilling.InvoiceID,0)<>0 AND  isnull(AutoEmailInvoices,0)=1 and
+        (dbo.tblAgreement.Status IN (2, 3)) AND (SELECT COUNT(*) FROM dbo.tblAgrmntCharges WHERE dbo.tblAgrmntCharges.AgrmntID = dbo.tblAgrmntBilling.AgrmntID) <> 0
+          and dbo.tblAgrmntBilling.InvoiceID in (select TransId from (SELECT m.*, ROW_NUMBER() OVER (PARTITION BY TransID ORDER BY EmailMsgID DESC) AS rn FROM tblEmaillist m) p
+      where rn=1 and TransType='AutoEmailInvoice' AND ErrorMessage<>'' and DATEDIFF(day,TimeCreated,getdate()) between 0 and @ReTryDays)
+          and  (dbo.tblAgrmntBilling.InvDate>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567) or
+            dbo.tblAgreement.TimeCreated>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567))
+            and tblAgrmntBilling.InvoiceID not in (
+          case when  @SendPaymentReceived=0 then (select top 1 invoiceId from tblpaymentdetail where invoiceID=tblAgrmntBilling.InvoiceID) else 0 end
+          )
+
+          order by dbo.tblAgrmntBilling.AgrmnInvID desc
+      END
+      ELSE
+      BEGIN
+      SELECT  top 10 dbo.tblAgrmntBilling.AgrmnInvID, dbo.tblAgrmntBilling.AgrmntID, dbo.tblCustomer.Email, dbo.tblAgreement.AutoEmailInvoices,tblAgrmntBilling.InvoiceID
+      FROM         dbo.tblAgrmntBilling INNER JOIN
+                  dbo.tblAgreement ON dbo.tblAgrmntBilling.AgrmntID = dbo.tblAgreement.AgrmntID INNER JOIN
+                  dbo.tblCustomer ON dbo.tblAgreement.CustID = dbo.tblCustomer.CustID
+      WHERE     (dbo.tblAgrmntBilling.InvDate <= DATEADD(day, @DaysToAdd, GETDATE())) AND
+                Isnull(dbo.tblAgrmntBilling.InvoiceID,0)<>0 AND  isnull(AutoEmailInvoices,0)=1 and
+        (dbo.tblAgreement.Status IN (2, 3)) AND (SELECT COUNT(*) FROM dbo.tblAgrmntCharges WHERE dbo.tblAgrmntCharges.AgrmntID = dbo.tblAgrmntBilling.AgrmntID) <> 0
+          and dbo.tblAgrmntBilling.InvoiceID not in (select transid from tblEmailList where TransType='AutoEmailInvoice' )
+          and  (dbo.tblAgrmntBilling.InvDate>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567) or
+            dbo.tblAgreement.TimeCreated>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567))
+            and tblAgrmntBilling.InvoiceID not in (
+          case when  @SendPaymentReceived=0 then (select top 1 invoiceId from tblpaymentdetail where invoiceID=tblAgrmntBilling.InvoiceID) else 0 end
+          )
+          order by dbo.tblAgrmntBilling.AgrmnInvID desc
+      END
+      */
+      DECLARE @DaysToAdd INT;
+      DECLARE @ReTryDays INT;
+      DECLARE @SendPaymentReceived Bit;
+      SET @DaysToAdd = (SELECT TOP 1 ISNULL(CreateAgrmntInvoiceDays, 0) FROM tblCompanyPreference)
+      SET @ReTryDays = (SELECT TOP 1 ISNULL(FailedInvoicesRetry, 0) FROM tblCompanyPreference);
+      SET @SendPaymentReceived = (SELECT TOP 1 ISNULL(PaymentReceived, 0) FROM tblCompanyPreference);
+      --if  @SendPaymentReceived value 0 then and tblAgrmntBilling.InvoiceID not in (select invoiceId from tblpaymentdetail)  else nothing
+
+      IF ( @ReTryDays >0 )
+      BEGIN
+        SELECT  top 10 dbo.tblAgrmntBilling.AgrmnInvID, dbo.tblAgrmntBilling.AgrmntID, dbo.tblCustomer.Email, dbo.tblAgreement.AutoEmailInvoices,tblAgrmntBilling.InvoiceID
+        FROM    dbo.tblAgrmntBilling INNER JOIN
+                  dbo.tblAgreement ON dbo.tblAgrmntBilling.AgrmntID = dbo.tblAgreement.AgrmntID INNER JOIN
+                  dbo.tblCustomer ON dbo.tblAgreement.CustID = dbo.tblCustomer.CustID
+        WHERE   (dbo.tblAgrmntBilling.InvDate <= DATEADD(day, @DaysToAdd, GETDATE())) AND
+            Isnull(dbo.tblAgrmntBilling.InvoiceID,0)<>0 AND  isnull(AutoEmailInvoices,0)=1 and
+            --(dbo.tblAgreement.Status IN (2, 3)) /* Comented by Paritosh and added below new condition*/
+            (((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) = 0 and dbo.tblAgreement.Status in (2,3))
+            or ((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) =1 and dbo.tblAgreement.Status =2))
+
+            AND (SELECT COUNT(*) FROM dbo.tblAgrmntCharges WHERE dbo.tblAgrmntCharges.AgrmntID = dbo.tblAgrmntBilling.AgrmntID) <> 0
+            and dbo.tblAgrmntBilling.InvoiceID not in (select transid from tblEmailList where TransType='AutoEmailInvoice' )
+            and  (dbo.tblAgrmntBilling.InvDate>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567) or
+            dbo.tblAgreement.TimeCreated>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567))
+            and ( (@SendPaymentReceived=0 and tblAgrmntBilling.InvoiceID <> isnull((select top 1 invoiceId from tblpaymentdetail where invoiceId=tblAgrmntBilling.InvoiceID),0))
+            or (@SendPaymentReceived=1 and tblAgrmntBilling.InvoiceID not in (0)))
+            and dbo.tblAgrmntBilling.InvoiceID not in (select InvoiceID from tblinvoice where isnull(void,0)=1 or isnull(Cleared,0)=1)
+                -- order by dbo.tblAgrmntBilling.AgrmnInvID desc
+
+          UNION
+
+          SELECT  top 10 dbo.tblAgrmntBilling.AgrmnInvID, dbo.tblAgrmntBilling.AgrmntID, dbo.tblCustomer.Email, dbo.tblAgreement.AutoEmailInvoices,tblAgrmntBilling.InvoiceID
+          FROM     dbo.tblAgrmntBilling INNER JOIN
+                dbo.tblAgreement ON dbo.tblAgrmntBilling.AgrmntID = dbo.tblAgreement.AgrmntID INNER JOIN
+              dbo.tblCustomer ON dbo.tblAgreement.CustID = dbo.tblCustomer.CustID
+          WHERE   (dbo.tblAgrmntBilling.InvDate <= DATEADD(day, @DaysToAdd, GETDATE())) AND
+              Isnull(dbo.tblAgrmntBilling.InvoiceID,0)<>0 AND  isnull(AutoEmailInvoices,0)=1 and
+              --(dbo.tblAgreement.Status IN (2, 3))
+              (((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) = 0 and dbo.tblAgreement.Status in (2,3))
+              or ((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) =1 and dbo.tblAgreement.Status=2))
+              AND (SELECT COUNT(*) FROM dbo.tblAgrmntCharges WHERE dbo.tblAgrmntCharges.AgrmntID = dbo.tblAgrmntBilling.AgrmntID) <> 0
+              and dbo.tblAgrmntBilling.InvoiceID in (select TransId from (SELECT m.*, ROW_NUMBER() OVER (PARTITION BY TransID ORDER BY EmailMsgID DESC) AS rn FROM tblEmaillist m) p
+              where rn=1 and TransType='AutoEmailInvoice' AND ErrorMessage<>'' and DATEDIFF(day,TimeCreated,getdate()) between 0 and @ReTryDays)
+              and  (dbo.tblAgrmntBilling.InvDate>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567) or
+              dbo.tblAgreement.TimeCreated>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567))
+                and ( (@SendPaymentReceived=0 and tblAgrmntBilling.InvoiceID <> isnull((select top 1 invoiceId from tblpaymentdetail where invoiceId=tblAgrmntBilling.InvoiceID),0))
+              or (@SendPaymentReceived=1 and tblAgrmntBilling.InvoiceID not in (0)))
+              and dbo.tblAgrmntBilling.InvoiceID not in (select InvoiceID from tblinvoice where isnull(void,0)=1 or isnull(Cleared,0)=1)
+              order by dbo.tblAgrmntBilling.AgrmnInvID desc
+        END
+      ELSE
+        BEGIN
+          SELECT  top 10 dbo.tblAgrmntBilling.AgrmnInvID, dbo.tblAgrmntBilling.AgrmntID, dbo.tblCustomer.Email, dbo.tblAgreement.AutoEmailInvoices,tblAgrmntBilling.InvoiceID
+          FROM    dbo.tblAgrmntBilling INNER JOIN
+              dbo.tblAgreement ON dbo.tblAgrmntBilling.AgrmntID = dbo.tblAgreement.AgrmntID INNER JOIN
+              dbo.tblCustomer ON dbo.tblAgreement.CustID = dbo.tblCustomer.CustID
+          WHERE   (dbo.tblAgrmntBilling.InvDate <= DATEADD(day, @DaysToAdd, GETDATE())) AND
+              Isnull(dbo.tblAgrmntBilling.InvoiceID,0)<>0 AND  isnull(AutoEmailInvoices,0)=1 and
+              --(dbo.tblAgreement.Status IN (2, 3))
+              (((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) = 0 and dbo.tblAgreement.Status in (2,3))
+              or ((select isnull(ExpiredCancelAgrmntFutureStop,0) from tblCompanyPreference) =1 and dbo.tblAgreement.Status=2))
+              AND (SELECT COUNT(*) FROM dbo.tblAgrmntCharges WHERE dbo.tblAgrmntCharges.AgrmntID = dbo.tblAgrmntBilling.AgrmntID) <> 0
+              and dbo.tblAgrmntBilling.InvoiceID not in (select transid from tblEmailList where TransType='AutoEmailInvoice' )
+              and dbo.tblAgrmntBilling.InvoiceID not in (select InvoiceID from tblinvoice where isnull(void,0)=1 or isnull(Cleared,0)=1)
+              and  (dbo.tblAgrmntBilling.InvDate>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567) or
+              dbo.tblAgreement.TimeCreated>= (select top 1 DateUpdated from tblVersionUpdate where VersionNO=567))
+              and ( (@SendPaymentReceived=0 and tblAgrmntBilling.InvoiceID <> isnull((select top 1 invoiceId from tblpaymentdetail where invoiceId=tblAgrmntBilling.InvoiceID),0))
+              or (@SendPaymentReceived=1 and tblAgrmntBilling.InvoiceID not in (0)))
+          order by dbo.tblAgrmntBilling.AgrmnInvID desc
+        END
+
+  - id: q10
+    title: "Query 10"
+    sql: | 
+      SELECT * FROM  [vuCreateAutoOverInvGrpList]
+
+  - id: q11
+    title: "Query 11"
+    sql: | 
+      SELECT     PreferenceID, CompanyName, Address1, Address2, Address3, City, State,
+                Zip, CompanyURL, CompanyEmail, Phone, Fax, CompanyLogo,
+                PartStockGLAcctID, PartNonStockGLAcctID, PartAdjustGLAcctID, ARGLAcctID,
+                CashGLAcctID, SalesTaxGLAcctID, PartVarianceGLAcctID,
+                LaborVarianceGLAcctID, StockGLAcctSetID, NonStockGLAcctSetID, LaborGLAcctSetID,
+                ManualInvGLAcctID, POAccruralGLAcctID, POShippingGLAcctID, POTaxGLAcctID,
+                InvoiceMsg, EstimateMsg, AgrmntRpt,  ARTermID, SvcSaleLessThenCostMsg,
+                ShowEstItemPrice, ShowEstStages, JobTypeID, SvcRepairID,  SvcSelectActiveSingleAgrmnt,
+                SvcShowEquipWarranty,
+                ShowEstStagesDate, ShowCompanyLogo, StringProperCase, ShowCustPartAdv, ShowCustLaborAdv,
+                CreateAgrmntInvoiceDays, SvcPrintParts, SvcPrintLabor, AgrmntGLAcctID, PhoneNoFormat,
+                SpecialCustPriceMsg, SpecialCustPriceExpMsg, SvcOrdTypeID, InvMainWarehouseID,
+                InvDefQBAssetAcctID, InvDefQBIncomeAcctID, InvDefQBExpenseAcctID, DefDepositToAcctID, DefBankAcctID,
+                PurchaseTypeID, UseOvertimeMarkup2,
+                EmpCallTypeID, EmpOvertimePayTypeID, SvcOrdLowMrgMsg, SvcOrdPartsNotOnHand,
+                SvcDisplayHrsAsUnits, SvcRespectSchedLineNum, SvcLaborCostHourBasedOn, SvcUseCustCommentForInstruc,
+                CustRateTableID, SalesTaxGrpID, SvcSchedStartTime, SvcSchedEndTime, SchedSlotLayout,
+                EmpStartTime, EmpEndTime, HolidaysID, BackupFileName, BackupPath, LastBackup,
+                QBFilePath, QBAccounts, QBTermNames, QBEmployeeNames, QBVendorNames, QBEmpPayTypes,
+                QBExportType, QBTaxExportType, LockQBSync, LockQBSyncUser, QBUseExportDateAsTransDate, QBUseExpAcctOnPOStockItems,
+                InvoiceRpt, InstallInvRpt, DefTaxGroupID, CustomFields,
+                EstimateRpt, EstimateTechRpt, ServiceHistoryRpt, CreditMemoRpt, InvGrpRpt,
+                SvcOrderRpt, SvcOrderSigRpt, TechSchedSumRpt, StatementRpt, PurchaseOrderRpt, POQuoteRpt,
+                RequirePOApproval,  SchedImportFieldLinks,  QBIntlType, QBLinkExportedTransToCust, QBApplyPmntToInv,
+                QBExportItemsToQB, QBAddPSTPrefix, QBExportZeroAmtInv, QBExportPmntNote, RequiredFields,
+                CustomerJobOverview, UserCreated, InvCostValuation, ConfirmInvPaymentDlg,
+                PODontGenerateJournal, BackupReminder, BackupReminderDays, UpdateCostWVendorPricing,
+                SchedHolidayDays, SchedWorkDays, SchedLunchHours, SchedWeekendPeriod, SchedLunchHrsBillable, SchedSMSFormat,
+                SchedIncludeEstInOpenWO, SchedShowConflicts, SchedPromptSchedFromSameSite, SchedDefDurationMinutes, SchedSignatureTerms,
+                POWorksheetRpt, PurchPartDescJob, SvcAdjustPartID, SvcGrpByAgrmntWhenProcessing,
+                PurchPartDescService, EntitySvcS, EntitySvcP, EntityEstP, EntityEstS, EntityTechS,
+                EntityTechAb, EntityInvGrpS, EntityInvGrpP, FeatureEquip, FeatureResident, FeatureJournals, FeatureInventory, FeaturePortal,
+                EstPrintParts, EstPrintLabor, SvcServiceInvOrder, EstTransOrder,
+                EntityAgrmntS, EntityAgrmntP, EntityCampaignS, EntityCampaignP,
+                EntityPartsS, EntityPartsP, FeatureAgrmnt, FeatureCampaign, EntitySvcReqS, EntitySvcReqP, EntityForemanS,
+                SchedLaborShowInv, SchedLaborChargeType, SchedMaxEmpHours, FeaturePOReq, DefaultProcessPartAction,
+                POSCustID, POSSiteID, POSSvcTypeID, POSTermID, QBClassesNames, HideRestrictedActions, MiscCustSiteAdvancedSearch,
+                MiscAutoGeoCodeSites, MiscRoutingUnits, MiscAutoLoadLookups, MiscSetEmailedTransAsPrinted, MiscEquipComboFields,
+                MiscIgnoreCustomFieldDataTypes, MiscOverwriteCityByZipChange, MiscMaxAttachmentSize, MiscAttachFiles,
+                SOPromptExistingOpenSvcOrder, InvPromptToCreateVendorBill,
+                LastRefreshValue, PortalAccessRights, TimeCreated, UserModified, TimeModified, dbo.GetRowStamp(RecordID) AS RecordID,
+                POReceiveItemsDirectlyToSO, MicRoundUnitSaleAmts, MiscRptEmailBodyText, SvcConvertPartToEquipOnCreate, InvAllowDimensions,
+                QBLinkTransToSite, SvcAllowPartialBillingSvcCalls, EmailSearchSubjectPrefix, QBExportInvoiceNote, SvcProcessAgrmntsAsTodaysDate,
+                AREnableAgrmntDeposits, SOSendSORptToEquipOnBilledStatus, UpdateQtyToOrder ,EnablePartCostFromSvcOrderEst,AgreementScheduleAutoPO , ShowSlotLevelAttachAtWO , SecondOff ,RestrictCoverageEntryDate,MiscSetPDFTransAsPrinted,DefaultPoRNotification
+                
+      FROM         dbo.tblCompanyPreference       

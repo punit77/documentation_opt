@@ -78,6 +78,7 @@ async function loadDefinition() {
 
     const def = await loadYAML(`content/definitions/${name.toLowerCase()}.yml`);
 
+
     document.getElementById("defTitle").innerText = name;
     document.getElementById("definitionBox").innerText = def.definition;
 }

@@ -1,0 +1,14 @@
+name: "vuLookupChangeOrder"
+definition: |
+  CREATE VIEW [dbo].[vuLookupChangeOrder]
+  AS
+  SELECT     dbo.tblSvcOrderEstChange.EstChangeID, dbo.tblSvcOrderEstChange.SvcOrderID, dbo.tblSvcOrderEstChange.ChangeDate, 
+                        dbo.tblSvcOrderEstChange.SvcChangeID, dbo.tblSvcOrderEstChange.Description,
+                            (SELECT     SUM(ISNULL(LineSaleTotal, 0)) AS Expr1
+                              FROM          dbo.tblSvcOrderEst
+                              WHERE      (EstChangeID = dbo.tblSvcOrderEstChange.EstChangeID)) AS ChangeAmount, dbo.tblSvcOrderEstChange.RequestedBy, 
+                        dbo.tblSvcOrderEstChange.UserID, dbo.tblSvcOrderEstChange.RecordID, dbo.tblSvcOrderEstChange.Status, dbo.tblSvcOrderEstChange.ChangeNum, 
+                        dbo.tblSvcOrder.CustID, dbo.tblSvcOrder.CustSiteID, dbo.tblSvcOrderEstChange.IsVersion
+  FROM         dbo.tblSvcOrderEstChange INNER JOIN
+                        dbo.tblSvcOrder ON dbo.tblSvcOrderEstChange.SvcOrderID = dbo.tblSvcOrder.SvcOrderID
+  GO

@@ -1,0 +1,42 @@
+name: "vuCreateAutoOverInvList"
+definition: |
+  CREATE VIew [dbo].[vuCreateAutoOverInvList] as
+  SELECT  TOP 2  dbo.tblInvoice.InvoiceID,dbo.tblCustomer.CustID,dbo.tblCustomer.Email,dbo.tblCustomer.AutoInvoice,dbo.tblCustomer.AlertDueDays,
+  CASE WHEN ( SELECT ReportEngine from tblRptStatic  where  ReportName  = isnull(dbo.tblInvoice.InvoiceReportName,InvoiceRpt)) = 1
+      THEN '(System Report)'
+    ELSE  isnull(dbo.tblInvoice.InvoiceReportName,InvoiceRpt)   END as InvoiceReportName 	 
+  ,case isnull(dbo.tblInvoice.Isinstall,0) when 1 then 2 else 1 end as RptType
+  --
+  --,dbo.tblCustomer.OverDueInvDueDateFlag,AlertDueDays,tblInvoice.DateDue,tblInvoice.InvDate
+  --
+  From dbo.tblInvoice INNER JOIN  dbo.tblCustomer ON dbo.tblInvoice.CustID = dbo.tblCustomer.CustID
+  ,(SELECT InvoiceRpt FROM TBLCompanyPreference)as DefaultReport
+  WHERE isnull(dbo.tblCustomer.Email,'') <>'' and
+  tblInvoice.InvoiceID not in (Select TransID from tblemailList Where  TransType='AutoOverdueInvoice')  and  
+  (case OverDueInvDueDateFlag when 2 then dbo.tblInvoice.DateDue else dbo.tblInvoice.InvDate end  + ISNULL(dbo.tblCustomer.AlertDueDays, 0)  <=  GETDATE() ) aND
+        (ISNULL(dbo.tblInvoice.AmtDue, 0) > 0) and (ISNULL(dbo.tblCustomer.AutoInvoice, 0) = 1)
+          AND (ISNULL(dbo.tblInvoice.AutoEmailInvSent, 0) = 0) 
+          AND (dbo.tblInvoice.Void IS NULL OR dbo.tblInvoice.Void = 0)
+        AND (dbo.tblInvoice.Cleared IS NULL OR dbo.tblInvoice.Cleared = 0)
+        AND dbo.tblInvoice.InvoiceID not in (SELECT dbo.tblInvGrpDetail.InvoiceID
+  From dbo.tblInvGrp 
+  INNER JOIN dbo.tblInvGrpDetail ON dbo.tblInvGrpDetail.InvGrpID = dbo.tblInvGrp.InvGrpID
+  INNER JOIN dbo.tblInvoice ON dbo.tblInvGrpDetail.InvoiceID = dbo.tblInvoice.InvoiceID
+  INNER JOIN  dbo.tblCustomer ON dbo.tblInvoice.CustID = dbo.tblCustomer.CustID
+  WHERE  ((select top 1 case OverDueInvDueDateFlag when 2 then dbo.tblInvoice.DateDue else dbo.tblInvoice.InvDate end
+  From dbo.tblInvGrp as btblInvGrp
+  INNER JOIN dbo.tblInvGrpDetail ON dbo.tblInvGrpDetail.InvGrpID = btblInvGrp.InvGrpID
+  INNER JOIN dbo.tblInvoice ON dbo.tblInvGrpDetail.InvoiceID = dbo.tblInvoice.InvoiceID
+  INNER JOIN dbo.Customers as Cust on btblInvGrp.CustID=Cust.CustID
+  where btblInvGrp.InvGrpID=btblInvGrp.InvGrpID) + ISNULL(dbo.tblCustomer.AlertDueDays, 0)  <=  GETDATE() ) aND
+        (ISNULL(dbo.tblInvoice.AmtDue, 0) > 0) and (ISNULL(dbo.tblCustomer.AutoInvoice, 0) = 1)
+        AND (ISNULL(dbo.tblInvGrp.AutoEmailInvSent, 0) in (0,1)) AND (ISNULL(dbo.tblInvoice.AutoEmailInvSent, 0) = 0)
+        AND (dbo.tblInvoice.Void IS NULL OR dbo.tblInvoice.Void = 0)
+        AND (dbo.tblInvoice.Cleared IS NULL OR dbo.tblInvoice.Cleared = 0))
+  order by
+          Case 
+            datepart(MINUTE,getdate()) % 2 when 0 then 
+                  tblInvoice.InvoiceID 
+            else
+                  tblInvoice.InvoiceID  * -1
+            END

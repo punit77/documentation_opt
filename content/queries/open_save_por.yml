@@ -1,0 +1,137 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      SELECT 
+          PurRequisitionID, SvcOrderID, EmployeeID, NeededByDate, 
+          Description, Status, UserCreated, TimeCreated, UserModified,
+          TimeModified, RecordID , ShipTo
+        FROM
+          tblSvcPurRequisition
+      WHERE PurRequisitionID=34
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      SELECT 
+          PurReqApprovalID, PurRequisitionID, EmployeeID, Status, 
+          DeclineNote, DateApproved, UserCreated, TimeCreated, 
+          UserModified, TimeModified, RecordID
+        FROM
+          tblSvcPurRequisitionApproval
+      WHERE PurRequisitionID=34
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      SELECT     tblSvcPurRequisitionParts.PurRequisitionPartID, tblSvcPurRequisitionParts.PurRequisitionID, tblSvcPurRequisitionParts.JobStageID,
+                      tblSvcPurRequisitionParts.PartID, tblSvcPurRequisitionParts.UnitMeasureID, tblSvcPurRequisitionParts.Description,
+                      tblSvcPurRequisitionParts.Quantity, tblSvcPurRequisitionParts.ExtQuantity, tblSvcPurRequisitionParts.UnitCost, tblSvcPurRequisitionParts.ExtCost,
+                      tblSvcPurRequisitionParts.ReqTemplatePartID, tblSvcPurRequisitionParts.OriginalQty, tblSvcPurRequisitionParts.ChangeDescription,
+                      tblSvcPurRequisitionParts.ProcessedQty, tblSvcPurRequisitionParts.UserCreated, tblSvcPurRequisitionParts.TimeCreated,
+                      tblSvcPurRequisitionParts.UserModified, tblSvcPurRequisitionParts.TimeModified, tblSvcPurRequisitionParts.RecordID, tblParts.MfgPartNumber , tblSvcPurRequisitionParts.DefaultVendorID, TagId
+      FROM         tblSvcPurRequisitionParts LEFT OUTER JOIN
+                            tblParts ON tblSvcPurRequisitionParts.PartID = tblParts.PartID
+      WHERE PurRequisitionID=34
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      SELECT     tblSvcPurReqTemplate.ReqTemplatePartID, tblSvcPurReqTemplate.SvcOrderID, tblSvcPurReqTemplate.JobStageID, tblSvcPurReqTemplate.PartID,
+                      tblSvcPurReqTemplate.Description, tblSvcPurReqTemplate.UnitMeasureID, tblSvcPurReqTemplate.Quantity, tblSvcPurReqTemplate.ExtQuantity,
+                      tblSvcPurReqTemplate.UnitCost, tblSvcPurReqTemplate.ExtCost, tblSvcPurReqTemplate.UserCreated, tblSvcPurReqTemplate.TimeCreated,
+                      tblSvcPurReqTemplate.UserModified, tblSvcPurReqTemplate.TimeModified, tblSvcPurReqTemplate.RecordID, tblParts.MfgPartNumber
+      FROM         tblSvcPurReqTemplate LEFT OUTER JOIN
+                            tblParts ON tblSvcPurReqTemplate.PartID = tblParts.PartID
+      WHERE SvcOrderID=30661
+
+  - id: q5
+    title: "Query 5"
+    sql: |
+      SELECT 
+        ReqNotifyID, SvcOrderID, EmployeeID, RequiresApproval, 
+        UserCreated, TimeCreated, UserModified, TimeModified, 
+        RecordID
+      FROM
+        tblSvcPurReqNotify WHERE SvcOrderID=30661  AND RequiresApproval=1
+
+  - id: q6
+    title: "Query 6"
+    sql: |
+        exec sp_executesql N'SELECT     TOP 100 PERCENT dbo.tblCustomer.CustName, dbo.tblCustomerSite.SiteName,
+                          (SELECT     MAX(TimeCreated)
+                            FROM          dbo.tblSvcPurRequisition
+                            WHERE      SvcORderID = tblSvcOrder.SvcOrderID) AS LastPurchase
+        FROM         dbo.tblSvcOrder INNER JOIN
+                            dbo.tblCustomerSite ON dbo.tblSvcOrder.CustSiteID = dbo.tblCustomerSite.CustSiteID INNER JOIN
+                            dbo.tblCustomer ON dbo.tblSvcOrder.CustID = dbo.tblCustomer.CustID
+        WHERE tblSvcOrder.SvcOrderID = @P1',N'@P1 int',30661
+
+  - id: q7
+    title: "Query 7"
+    sql: |
+        declare @p3 nvarchar(4000)
+        set @p3=N'357'
+        exec sp_executesql N'SET @P1 = CAST((SELECT (Count(*)) AS Value FROM tblParts WHERE tblParts.IsActive=1 
+        AND  UPPER(CONVERT(NVARCHAR(4000), partnumber)) LIKE ''D%'') AS nvarchar(4000))',N'@P1 nvarchar(4000) OUTPUT',@p3 output
+        select @p3
+
+  - id: q8
+    title: "Query 8"
+    sql: |
+        declare @p3 int
+        set @p3=NULL
+        exec sp_executesql N'EXEC [spGetSortedPage] ''SELECT
+            PARTID, PARTNUMBER, SALESDESC, PURCHASEDESC, ITEMTYPE, CATEGORYID, SUBCATEGORYID, ISACTIVE, RECORDID,
+            SALESPRICE, STANDERDCOST, CURRENTCOST, AVERAGECOST, HIGHESTCOST, QTYINSTOCK,
+            QTYONORDER, MODELNUMBER,
+            (CASE WHEN PARTMARKUPID IS NOT NULL THEN
+                  CAST(DBO.[FNGETPARTSALEAMT](TBLPARTS.PARTID, NULL, NULL, TBLPARTS.PARTMARKUPID, GETDATE(), 0, 0, NULL, 0) AS MONEY)
+                  ELSE NULL END) AS FINALPRICE,
+            (CASE WHEN PARTMARKUPIDEST IS NOT NULL THEN
+                  CAST(DBO.[FNGETPARTSALEAMT](TBLPARTS.PARTID, NULL, NULL, TBLPARTS.PARTMARKUPIDEST, GETDATE(), 0, 0, NULL, 0) AS MONEY)
+                  ELSE NULL END) AS FINALPRICEEST,
+                  CF1, CF2, CF3, CF4, CF5,MFGPARTNUMBER,MANUFACTURERID
+        FROM
+            DBO.TBLPARTS
+        '', ''tblParts'', ''PartID'', ''PartNumber ASC'', 100, 0, ''tblParts.IsActive=1  AND  UPPER(CONVERT(NVARCHAR(4000), partnumber)) LIKE ''''D%'''''', @P1 OUTPUT',N'@P1 int OUTPUT',@p3 output
+        select @p3
+
+  - id: q9
+    title: "Query 9"
+    sql: |
+        declare @p3 float
+        set @p3=320.680000000000006821210263296961784362793
+        exec sp_executesql N'SET @P1 = dbo.[fnGetPartCostAmt](@P2, GETDATE(), @P3, NULL)',N'@P1 float OUTPUT,@P2 int,@P3 int',@p3 output,26931,0
+        select @p3
+
+  - id: q10
+    title: "Query 10"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblSvcPurRequisitionParts (
+      "PurRequisitionID", "JobStageID", "PartID", "UnitMeasureID", "Description", "Quantity", "ExtQuantity", "UnitCost", "ExtCost", "ReqTemplatePartID",
+       "OriginalQty", "ChangeDescription", "ProcessedQty", "UserCreated", "TimeCreated", "UserModified", "TimeModified", "DefaultVendorID", "TagId")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, @P13, @P14, @P15, @P16, @P17, @P18, @P19)',N'@P1 int,@P2 int,@P3 int,@P4 int,
+      @P5 varchar(8000),@P6 float,@P7 float,@P8 money,@P9 money,@P10 int,@P11 float,@P12 varchar(8000),@P13 float,@P14 varchar(8000),@P15 datetime2(7),
+      @P16 varchar(8000),@P17 datetime2(7),@P18 int,@P19 varchar(8000)',34,NULL,26931,1,'Dewalt 20V Max Narrow Crown Stapler-Tool Only'
+      ,1.010000000000000008881784197001252323389053,1.010000000000000008881784197001252323389053,$320.6800,$323.8868,NULL,NULL,NULL,0,'Admin',
+      '2025-12-05 00:46:23.2770000',NULL,NULL,1484,NULL
+
+  - id: q11
+    title: "Query 11"
+    sql: |
+      exec sp_executesql N'UPDATE dbo.tblSvcPurRequisition
+      SET Status = (CASE WHEN ((SELECT COUNT(*) FROM tblSvcPurRequisitionParts WHERE (PurRequisitionID = @P1) AND
+        (ISNULL(Quantity, 0) > 0) AND (ISNULL(ProcessedQty, 0) < ISNULL(Quantity, 0))) > 0) THEN 1 ELSE 2 END)
+      WHERE (PurRequisitionID = @P2) AND (ISNULL(Status, 0) <> 3)',N'@P1 int,@P2 int',34,34
+
+  - id: q12
+    title: "Query 12"
+    sql: |
+      exec sp_executesql N'SELECT     dbo.tblSvcPurReqNotify.EmployeeID, dbo.tblSvcPurReqNotify.RequiresApproval,
+           dbo.tblEmployee.FirstName, dbo.tblEmployee.LastName,
+           dbo.tblEmployee.Email
+      FROM       dbo.tblSvcPurReqNotify INNER JOIN
+                dbo.tblEmployee ON dbo.tblSvcPurReqNotify.EmployeeID = dbo.tblEmployee.EmployeeID
+        WHERE
+          SvcOrderID = @P1 AND ISNULL(dbo.tblEmployee.Email, '''') <> ''''',N'@P1 int',30661

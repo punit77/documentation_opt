@@ -1,0 +1,50 @@
+name: "fnGetPartCostAmt"
+definition: |
+  CREATE FUNCTION [dbo].[fnGetPartCostAmt]
+  (
+    @PartID int,
+    @CurDate datetime,
+    @VendorID int = 0,
+    /*need this param when receiving an old po receipt*/
+    @CurCost money = NULL
+  )
+  RETURNS money
+  AS
+  BEGIN
+    DECLARE @PartCost money, @CostValuation tinyint
+    
+    IF @VendorID > 0
+        SET @PartCost = (SELECT TOP 1 CostAmt FROM tblVendorCatalog 
+              WHERE (PartID = @PartID AND VendorID = @VendorID)) 
+                  
+
+    IF @PartCost IS NULL
+    BEGIN
+      /* First check if part has a valuation set */
+      SET @CostValuation = (SELECT ISNULL(CostValuation, 0) FROM tblParts WHERE PartID = @PartID)
+
+      /* Use company valuation */
+      IF @CostValuation = 0
+        SET @CostValuation = (SELECT ISNULL(InvCostValuation, 0) FROM tblCompanyPreference)
+    
+      IF @CostValuation = 1      /* Average cost */
+        SET @PartCost = (SELECT (CASE WHEN ISNULL(AverageCost, 0) = 0 THEN StanderdCost 
+                ELSE AverageCost END) FROM tblParts WHERE PartID = @PartID)	
+      ELSE IF @CostValuation = 2   /* Standerd cost */
+        SET @PartCost = (SELECT ISNULL(StanderdCost, 0) FROM tblParts WHERE PartID = @PartID)
+      ELSE IF @CostValuation = 3   /* Current Cost */
+      BEGIN
+        /* when passing in teh current cost to use then use taht cost */
+        IF @CurCost IS NOT NULL
+          SET @PartCost = @CurCost
+        ELSE
+          SET @PartCost = (SELECT (CASE WHEN ISNULL(CurrentCost, 0) = 0 THEN StanderdCost 
+                ELSE CurrentCost END) FROM tblParts WHERE PartID = @PartID)
+      END
+      ELSE IF @CostValuation = 4 /* Highest Cost */
+                                      SET @PartCost = (SELECT (CASE WHEN ISNULL(HighestCost, 0) = 0 THEN StanderdCost 
+                ELSE HighestCost END) FROM tblParts WHERE PartID = @PartID)
+    END	
+
+    RETURN @PartCost
+  END

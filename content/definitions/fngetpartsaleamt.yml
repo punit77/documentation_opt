@@ -1,0 +1,110 @@
+name: "fnGetPartSaleAmt"
+definition: |
+  CREATE FUNCTION [dbo].[fnGetPartSaleAmt]
+  (
+    @PartID int,
+    @CustID int,
+    @AgrmntID int,
+    @MarkupID int,
+    @CurDate datetime,
+    @CostAmt money = 0, /* Manually added cost amount */
+    @UseManualPrice bit = 0,
+    @CurCost money = NULL,
+    @ScheduleID int
+  )
+  RETURNS float
+  AS
+  BEGIN
+    DECLARE @TempAmt money,
+    @TempAgrmntAmt money,
+    @TempCustAmt money,
+    @MarkupType tinyint,
+    @BaseAmt money,
+    @MarkupPct float,
+      @NeedRoundUnitSaleAmt bit,
+    @RecurrIndex int,
+    @ApplyToRecurr bit
+
+    SET @NeedRoundUnitSaleAmt = ISNULL((SELECT TOP 1 MicRoundUnitSaleAmts from tblCompanyPreference),0)
+
+  --  SET @TempAgrmntAmt = (SELECT TOP 1 Price FROM tblCustPartPricing 
+  --		  WHERE (PartID = @PartID) AND (AgrmntID = @AgrmntID))
+
+  -- Alex Kop #3635 
+    SET @ApplyToRecurr = ISNULL((SELECT TOP 1 ApplyPricingToSelectedRecurOnly FROM tblAgreement WHERE AgrmntID = @AgrmntID), 0)
+
+    IF (@ApplyToRecurr = 0)
+    BEGIN
+      SET @TempAgrmntAmt = (SELECT TOP 1 Price FROM tblCustPartPricing 
+        WHERE (PartID = @PartID) AND (AgrmntID = @AgrmntID))
+    END
+    ELSE
+    BEGIN
+      SET @RecurrIndex = ISNULL((SELECT TOP 1 RecurrIndex FROM tblAgrmntSched WHERE AgrmntSchedID = (SELECT TOP 1 AgrmntSchedID FROM tblSvcOrderSched WHERE ScheduleID = @ScheduleID)), 0)
+
+      IF @RecurrIndex > 0
+      BEGIN
+        SET @TempAgrmntAmt = (SELECT TOP 1 Price FROM tblCustPartPricing 
+            WHERE (PartID = @PartID) AND (AgrmntID = @AgrmntID) 
+            AND
+          (EXISTS(SELECT     AgrmntPricSchedLinkID
+            FROM         tblAgrmntPricingSchedLink
+            WHERE     (RecurrIndex = @RecurrIndex) AND (Selected = 1) 
+              AND (CustPartPriceID = tblAgrmntPricingSchedLink.PricingID)
+              AND tblAgrmntPricingSchedLink.TransType = 1
+          )))
+      END
+    END
+  -- #3635
+
+    SET @TempCustAmt = (SELECT TOP 1 Price FROM tblCustPartPricing 
+        WHERE (PartID = @PartID) AND (CustID = @CustID) 
+          AND ((@CurDate BETWEEN DateStarted AND DateEnded) 
+        OR (@CurDate >= DateStarted AND DateEnded IS NULL) 
+        OR (DateStarted IS NULL AND DateEnded IS NULL)))
+
+    IF (@TempAgrmntAmt IS NOT NULL)
+    BEGIN
+    SET @TempAmt = @TempAgrmntAmt
+    END	
+    ELSE IF (@TempCustAmt IS NOT NULL)
+    BEGIN
+      SET @TempAmt = @TempCustAmt
+    END ELSE
+    BEGIN
+    
+    -- We now pass in the MarkupID instead of the RateTableID so its not neccasery
+    /* SET @MarkupID = (SELECT PartMarkupID FROM tblRateTable WHERE RateTableID = @RateTableID) */
+
+    SET @MarkupType = (SELECT MarkupType
+      FROM tblMarkupTable 
+      WHERE (MarkupID = @MarkupID))
+    
+      /* Cost */
+    IF @MarkupType = 1
+      SET @BaseAmt = (CASE WHEN (@UseManualPrice = 1) THEN @CostAmt ELSE dbo.fnGetPartCostAmt(@PartID, @CurDate, 0, @CurCost) END)
+    ELSE    /* Sale amount */
+      SET @BaseAmt = (CASE WHEN  (@UseManualPrice = 1) THEN @CostAmt ELSE (SELECT ISNULL(SalesPrice, 0) FROM tblParts WHERE PartID = @PartID) END)
+
+    IF @BaseAmt > 0
+    BEGIN
+      /* Now get the markup rate */ /* use TOP 1 just in case there is a duplicate */
+      SET @MarkupPct = (SELECT TOP 1 ISNULL(MarkupAmt, 0) FROM tblMarkupTableItems
+              WHERE (MarkupID = @MarkupID)
+                AND (@BaseAmt BETWEEN FromAmount AND ISNULL(ToAmount, @BaseAmt)))
+      
+      SET @TempAmt = (@BaseAmt * @MarkupPct)
+    END ELSE /* if basa amt is a negative value tehn use that amt as teh sale amt */
+    BEGIN
+      SET @TempAmt = @BaseAmt
+    END
+    END
+
+    IF (@NeedRoundUnitSaleAmt = 1) 
+    BEGIN
+      SET @TempAmt = ROUND(@TempAmt,2)
+    END
+
+    RETURN ISNULL(@TempAmt, 0)
+
+  END

@@ -1,0 +1,34 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      SELECT 
+        *
+      FROM
+        tblSvcOrderEstChange WHERE EstChangeID=13
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      SELECT 
+          *
+      FROM
+          tblSvcOrder
+      WHERE SvcOrderID=116302
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      SELECT 
+        *
+      FROM
+        vuSvcOrderEstJobStage
+      WHERE ChangeStatus<>10  AND EstChangeID=13
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      SELECT
+          *, CAST((CASE WHEN ISNULL(GroupDetailID, 0) > 0 THEN 1 ELSE 0 END) AS bit) AS GroupSelect
+        FROM
+          vuSvcOrderEstDetailsNew WHERE ChangeStatus<>10  AND EstChangeID=13

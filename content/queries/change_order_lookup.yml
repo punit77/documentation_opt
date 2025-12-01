@@ -1,0 +1,26 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      declare @p3 int
+      set @p3=NULL
+      exec sp_executesql N'EXEC spGetSortedPage ''SELECT TOP 31 * FROM [VULOOKUPCHANGEORDER]
+      '', ''vuLookupChangeOrder'', ''EstChangeID'', ''EstChangeID DESC'', 31, 0, 
+      ''(IsVersion=0) AND (Status IN (1, 3, 4))'', @P1 OUTPUT',N'@P1 int OUTPUT',@p3 output
+      select @p3
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      exec [sys].sp_describe_undeclared_parameters N'SET @P1 = CAST((SELECT (Count(*)) AS Value 
+      FROM [vuLookupChangeOrder] 
+      WHERE (IsVersion=0) AND (Status IN (1, 3, 4))) AS nvarchar(4000))'
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      declare @p3 nvarchar(4000)
+      set @p3=N'34'
+      exec sp_executesql N'SET @P1 = CAST((SELECT (Count(*)) AS Value FROM vuLookupChangeOrder
+       WHERE (IsVersion=0) AND (Status IN (1, 3, 4))) AS nvarchar(4000))',N'@P1 nvarchar(4000) OUTPUT',@p3 output
+      select @p3

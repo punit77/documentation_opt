@@ -1,0 +1,18 @@
+name: "vuCreateCustomerNotificationList"
+definition: |
+  CREATE VIEW [dbo].[vuCreateCustomerNotificationList]
+  AS	
+  SELECT tblNotificationList.NotifyID,tblNotificationList.SvcOrderId,tblNotificationList.ScheduleID,
+  tblCustomerNotification.CustId,tblCustomer.CustName,dbo.fnGetActiveTechList (tblNotificationList.NotifyID) AS TechList,
+  --tblNotificationList.TechList,
+  --tblNotificationList.Email,
+  case isnull(dbo.tblCustomerNotification.Emails,'') when '' then tblCustomer.Email else dbo.tblCustomerNotification.Emails end as Email,
+  tblCustomerNotification.ActionId,tblCustomerNotification.TemplateID,tblNotificationList.TimeTrigger,tblNotificationList.IsCompleted,tblCustomerNotification.Subject,tblCustomerNotification.Body,
+  tblCustomer.Contact,tblNotificationList.IsSMSSent,tblCustEmailTemplate.Subject TemplateSubject,tblCustomerNotification.IsActive
+  from tblNotificationList
+  INNER JOIN tblCustomerNotification ON tblCustomerNotification.NOTIFICATIONID=tblNotificationList.NOTIFICATIONID
+  INNER JOIN dbo.tblCustomer ON tblCustomer.CustID = tblCustomerNotification.CustID
+  LEFT OUTER JOIN dbo.tblCustEmailTemplate ON tblCustEmailTemplate.EmailTemplateId=tblNotificationList.TemplateId
+  where (abs(DATEDIFF(minute,GETDATE(),TimeTrigger)) between 0 and 15) and IsCompleted=0 AND tblCustomerNotification.IsActive=1
+  AND tblNotificationList.NotifyID not in (Select TransID from tblemailList Where  TransType='CustNotificationEmails' )
+  GO

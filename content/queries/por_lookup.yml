@@ -1,0 +1,64 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      exec sp_executesql N'DECLARE @Locations AS VARCHAR(4096);
+      SET @Locations = '''';
+
+      DECLARE @Default AS VARCHAR(1);
+      SET @Default = (SELECT CONVERT(VARCHAR(1), ISNULL(DefLocationAccess, 3))
+                    FROM tblUserGroup WHERE GroupID = (SELECT GroupID
+                                                      FROM tblUser WHERE UserID = @P1));
+
+      SELECT @Locations = @Locations + CONVERT(VARCHAR(10), LocationID) + ''='' + @Default + CHAR(13) + CHAR(10) FROM tblLocation;
+      IF LEN(@Locations) > 2 SELECT @Locations = LEFT(@Locations, LEN(@Locations)-2)
+
+      SELECT U.LocationRights AS UserLR,
+            CONVERT(VARCHAR(4096), G.LocationAccess) AS GroupLR,
+            @Locations AS DefaultLR
+      FROM tblUser AS U
+      LEFT OUTER JOIN tblUserGroup AS G ON U.GroupID = G.GroupID
+      WHERE UserID = @P2',N'@P1 int,@P2 int',1,1
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      declare @p5 int
+      set @p5=86
+      exec sp_executesql N'DECLARE @SessionID UNIQUEIDENTIFIER;
+      SET @SessionID = @P1;
+      DECLARE @EmployeeID INT;
+      SET @EmployeeID = @P2;
+
+      DELETE FROM tblLocationFilter
+      WHERE SessionID = @SessionID
+
+      INSERT INTO tblLocationFilter(SessionID, SPID, LocationID, TimeCreated)
+      SELECT @SessionID, @@SPID, LocationID, GETDATE() FROM
+      tblEmpLocation AS E
+      WHERE @EmployeeID != -1 AND E.EmployeeID = @EmployeeID
+      UNION
+      SELECT @SessionID, @@SPID, LocationID, GETDATE() FROM tblLocation
+      WHERE @EmployeeID = -1
+
+      SET @P3 = @@SPID',N'@P1 uniqueidentifier,@P2 int,@P3 int OUTPUT','E6365DC9-730B-460C-9B57-49B1E40C1B28',-1,@p5 output
+      select @p5
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      declare @p3 int
+      set @p3=NULL
+      exec sp_executesql N'EXEC spGetSortedPage ''SELECT TOP 31   * FROM 
+      [VULOOKUPPOREQ]
+      '', ''vuLookupPOReq'', ''PurRequisitionID'', ''PurRequisitionID DESC'', 31, 0, '''', @P1 OUTPUT',N'@P1 int OUTPUT',@p3 output
+      select @p3
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      declare @p3 nvarchar(4000)
+      set @p3=N'43'
+      exec sp_executesql N'SET @P1 = CAST((SELECT (Count(*)) AS Value FROM vuLookupPOReq )
+      AS nvarchar(4000))',N'@P1 nvarchar(4000) OUTPUT',@p3 output
+      select @p3

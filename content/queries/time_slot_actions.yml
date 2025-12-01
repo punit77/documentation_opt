@@ -1,0 +1,89 @@
+queries:
+  - id: q1
+    title: "Query 1 - Open Time Slot"
+    sql: |
+      SELECT 
+        SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+        IsActive, dbo.GetRowStamp(RecordID) AS RecordID
+      FROM
+        dbo.tblSchedSubStatus
+
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+
+      SELECT 
+          *
+      FROM
+          tblSvcOrder
+      WHERE SvcOrderID=1000107
+
+  - id: q2
+    title: "Query 2 - Close/Save Time Slot"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblSvcSchedTimestamp (ChangeType, ScheduleID, SvcOrderID, StartTime, EndTime,
+            Status, SchedSubStatusID, TechList, UserCreated, TimeCreated, DeviceType)
+      SELECT @P1, @P2, @P3, @P4, @P5,
+            @P6, @P7, @P8, @P9, GETDATE(), @P10',N'@P1 int,@P2 int,@P3 int,@P4 datetime2(7),@P5 datetime2(7),
+            @P6 int,@P7 int,@P8 nvarchar(4000),@P9 nvarchar(4000),@P10 nvarchar(4000)',2,347065,1000107,
+            '2025-12-05 10:00:00','2025-12-05 14:00:00',2,7,N'10009',N'Admin',N'1'
+
+  - id: q3
+    title: "Query 3 - Time Slot Change Status"
+    sql: |
+      exec [sys].sp_describe_undeclared_parameters N'EXEC [spSvcOrderSched_IUD] @P1,@P2,@P3,@P4,
+      @P5,@P6,@P7,@P8,@P9,@P10,@P11,@P12,@P13,
+      @P14,@P15,@P16,@P17'
+
+      exec sp_executesql N'INSERT INTO tblSvcSchedTimestamp (ChangeType, ScheduleID, SvcOrderID, StartTime, EndTime,
+            Status, SchedSubStatusID, TechList, UserCreated, TimeCreated, DeviceType)
+      SELECT @P1, @P2, @P3, @P4, @P5,
+            @P6, @P7, @P8, @P9, GETDATE(), @P10',N'@P1 tinyint,@P2 int,@P3 int,@P4 datetime,@P5 datetime,@P6 int,
+            @P7 int,@P8 text,@P9 varchar(50),@P10 tinyint',2,347065,1000107,'2025-12-05 01:30:02.260','2025-12-05 05:30:02.260'
+            ,3,NULL,'10009','Admin',1
+
+      SELECT RecordID
+      FROM tblSvcOrderSched WHERE ScheduleID=347065
+
+  - id: q4
+    title: "Query 4 - Post the Slot"
+    sql: |
+      SELECT 
+        SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+        IsActive, dbo.GetRowStamp(RecordID) AS RecordID
+      FROM
+        dbo.tblSchedSubStatus
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+
+
+      declare @p4 varchar(8000)
+
+  - id: q5
+    title: "Query 4.1 - Post the Slot"
+    sql: |
+      set @p4='1000107=0'
+      exec sp_executesql N'DECLARE @WOList TABLE (RecID int)
+
+      INSERT INTO @WOList
+      SELECT RecID FROM dbo.[fnGetStringTempTbl](@P1)
+
+      DECLARE @BilledSvcOrderStr VARCHAR(8000)
+
+      SELECT   @BilledSvcOrderStr = COALESCE(@BilledSvcOrderStr, '''') + CAST(tblSvcOrder.SvcOrderID AS VARCHAR(20)) + ''='' + CAST(tblSvcOrder.IsInstall AS VARCHAR(2)) + '',''
+      FROM         tblSvcOrder INNER JOIN
+                            @WOList WOList ON tblSvcOrder.SvcOrderID = WOList.RecID
+      WHERE tblSvcOrder.Status = 2
+      GROUP BY tblSvcOrder.SvcOrderID, tblSvcOrder.IsInstall
+
+      IF RIGHT(@BilledSvcOrderStr, 1) = '',''
+        SET @BilledSvcOrderStr = LEFT(@BilledSvcOrderStr, LEN(@BilledSvcOrderStr) - 1)
+
+      SET @P2 = ISNULL(@BilledSvcOrderStr, '''')',N'@P1 varchar(8000),@P2 varchar(8000) OUTPUT','82045,1000107',@p4 output
+      select @p4
+
+  - id: q6
+    title: "Query 5 - Save The Time Slot"
+    sql: |
+      exec sp_executesql N'DECLARE @LaborRateID int
+
+      EXECUTE @LaborRateID = [spGetItemLaborRateID] @P1, @P2, @P3, @P4, @P5
+
+      SELECT @LaborRateID AS LaborRateID',N'@P1 int,@P2 int,@P3 int,@P4 int,@P5 int',10027,0,1,10009,0

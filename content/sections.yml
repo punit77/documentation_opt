@@ -37,3 +37,24 @@ sections:
   
   - id: activate_estimate
     title: "Activating an Estimate"  
+
+  - id: change_order_lookup
+    title: "Open Change Order Lookup"  
+  
+  - id: change_order_open
+    title: "Open Change Order Edit Form"  
+
+  - id: por_lookup
+    title: "Purcharse Order POR Lookup"  
+
+  - id: open_save_por
+    title: "Open and Save Purcharse Order Req"  
+
+  - id: open_sched_board
+    title: "Open Schedule Board"  
+
+  - id: assign_slot_schedboard
+    title: "Assign a Slot on Sched Board (Hefty)"  
+
+  - id: time_slot_actions
+    title: "Time Slot/Schedule Actions" 

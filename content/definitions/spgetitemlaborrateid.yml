@@ -1,0 +1,62 @@
+name: "spgetitemlaborrateid"
+definition:
+  CREATE PROCEDURE [dbo].[spGetItemLaborRateID]
+  (
+    @CustID int,
+    @AgrmntID int,
+    @RepairCodeID int,
+    @EmployeeID int,
+    @LaborPriceID int
+  ) 
+  AS
+
+  /**/
+
+  SET NOCOUNT ON
+  DECLARE @LaborRateID int, @EmployeeRateID int, @RepairRateID int, @LaborPriceRateID int, @CurDate datetime
+
+  SET @CurDate = GETDATE()
+
+  SELECT @RepairRateID = RateTableID FROM tblSvcRepairs 
+    WHERE RepairID = @RepairCodeID
+
+  IF @LaborPriceID > 0
+  BEGIN
+    SET @LaborPriceRateID = (SELECT RateTableID FROM tblCustLaborPricing WHERE CustLaborPriceID = @LaborPriceID)
+    IF @LaborPriceRateID IS NOT NULL
+      RETURN @LaborPriceRateID
+  END
+
+  IF @AgrmntID > 0
+  BEGIN
+    /* look for labor rate of pricing on this specific labor code OR if this labor code doesnt have any pricing set tehn look for global */
+    SET @LaborRateID = (SELECT TOP 1 RateTableID FROM tblCustLaborPricing
+      WHERE (AgrmntID = @AgrmntID) AND (RateTableID IS NOT NULL) AND (CoverageHourID IS NULL) AND
+        ((RepairID = @RepairCodeID) OR ((RepairID IS NULL) AND 
+        (NOT EXISTS(SELECT * FROM tblCustLaborPricing WHERE (AgrmntID = @AgrmntID) AND (RepairID = @RepairCodeID) AND (CoverageHourID IS NULL))))))
+
+  END
+  ELSE IF @CustID > 0
+  BEGIN
+    /* look for labor rate of pricing on this specific labor code OR if this labor code doesnt have any pricing set tehn look for global */
+    SET @LaborRateID = (SELECT TOP 1 RateTableID FROM tblCustLaborPricing
+      WHERE (CustID = @CustID) AND (RateTableID IS NOT NULL) AND (CoverageHourID IS NULL) AND
+        ((DateStarted IS NULL) OR (@CurDate >= DateStarted)) AND
+        ((DateEnded IS NULL) OR (@CurDate < DateEnded))	AND
+        ((RepairID = @RepairCodeID) OR ((RepairID IS NULL) AND 
+        (NOT EXISTS(SELECT * FROM tblCustLaborPricing WHERE (CustID = @CustID) AND (RepairID = @RepairCodeID) AND (CoverageHourID IS NULL) AND
+            ((DateStarted IS NULL) OR (@CurDate >= DateStarted)) AND
+            ((DateEnded IS NULL) OR (@CurDate < DateEnded)))))))
+
+    IF @LaborRateID IS NULL
+      SET @LaborRateID = @RepairRateID
+
+    IF @LaborRateID IS NULL
+    BEGIN
+      SET @EmployeeRateID = (SELECT RateTableID FROM tblEmployee WHERE EmployeeID = @EmployeeID)
+      IF @EmployeeRateID IS NOT NULL
+        SET @LaborRateID = @EmployeeRateID
+    END
+  END
+
+  RETURN ISNULL(@LaborRateID, 0)
