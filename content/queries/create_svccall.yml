@@ -1,0 +1,240 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      declare @p3 int
+      set @p3=NULL
+      exec sp_executesql N'EXEC spGetSortedPage ''SELECT TOP 50    CUSTID, CUSTNAME, CONTACT, ALTCONTACT, COMPANYNAME, BILLADDRESS_ADDR2, BILLADDRESS_ADDR3,
+                PHONE, ALTPHONE, MOBILE, PAGER, FAX, EMAIL, WEBSITE, CUSTTYPEID, ISACTIVE, SALESREPID,
+                BILLADDRESS_CITY, BILLADDRESS_STATE, BILLADDRESS_POSTALCODE, BILLADDRESS_COUNTRY, ALTACCOUNTNO,
+                RECORDID, CAMPAIGNID, TERMID, FIRSTNAME, LASTNAME, ONCREDITHOLD, CREDITLIMIT,
+                CF1, CF2, CF3, CF4, CF5, CF6, CF7, CF8, CF9, CF10, CF11, CF12, CF13, CF14, CF15,
+                CF16, CF17, CF18, CF19, CF20, CF21, CF22, CF23, CF24, CF25, CF26, CF27, CF28, CF29, CF30,
+                CUSTSITEID, ISPRIMARY, CUSTSITELINKID
+                
+      FROM         [VULOOKUPCUSTSELECT]
+      '', ''vuLookupCustSelect'', ''CustID'', ''CustName ASC'', 50, 0, ''vuLookupCustSelect.IsActive=1  AND ((vuLookupCustSelect.CustSiteID IS NULL) OR (NOT EXISTS (SELECT CustSiteLinkID, CustID, IsPrimary FROM vuLookupCustSelect AS b WHERE (CustID = vuLookupCustSelect.CustID) AND (CustSiteLinkID < vuLookupCustSelect.CustSiteLinkID))))'', @P1 OUTPUT',N'@P1 int OUTPUT',@p3 output
+      select @p3
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      exec [sys].sp_describe_undeclared_parameters N'SET @P1 = CAST((SELECT (Count(*)) 
+      AS Value FROM [vuLookupCustSelect] 
+      WHERE vuLookupCustSelect.IsActive=1     AND ((vuLookupCustSelect.CustSiteID IS NULL) 
+      OR (NOT EXISTS (SELECT CustSiteLinkID, CustID, IsPrimary FROM vuLookupCustSelect AS 
+      b WHERE (CustID = vuLookupCustSelect.CustID) AND (CustSiteLinkID < vuLookupCustSelect.CustSiteLinkID))))) AS nvarchar(4000))'
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      SELECT * FROM [vuLookupCustSiteSelect]
+      WHERE ( vuLookupCustSiteSelect.CustID = 10761 )  AND IsActive=1
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      exec sp_executesql N'SELECT CustSiteLinkID, IsPrimary
+      FROM tblCustSiteLink
+      WHERE CustID = @P1 AND CustSiteID = @P2',N'@P1 int,@P2 int',14004,18103
+
+  - id: q5
+    title: "Query 5"
+    sql: |
+      SELECT     *, CAST(RecordID AS bigint) AS RecIDInt
+      FROM         tblCustomer
+      WHERE tblCustomer.CustID=14004
+
+
+  - id: q6
+    title: "Query 6"
+    sql: |
+      /* 60 */
+      SET @P17 = dbo.[GetSiteTotal](@P18, GetDate(), 60)
+
+      /* 90 */
+      SET @P19 = dbo.[GetSiteTotal](@P20, GetDate(), 90)
+
+      /* Over 90 */
+      SET @P21 = dbo.[GetSiteTotal](@P22, GetDate(), 91)
+
+      END',N'@P1 bit,@P2 float OUTPUT,@P3 int,@P4 float OUTPUT,@P5 int,@P6 float OUTPUT,
+      @P7 int,@P8 float OUTPUT,@P9 int,@P10 float OUTPUT,@P11 int,@P12 bit,
+      @P13 float OUTPUT,@P14 int,@P15 float OUTPUT,@P16 int,@P17 float OUTPUT,@P18 int,@P19 float OUTPUT,
+      @P20 int,@P21 float OUTPUT,@P22 int',1,@p4 output,14004,@p6 output,14004,@p8 output,14004,@p10 output,14004,
+      @p12 output,14004,0,@p15 output,0,@p17 output,0,@p19 output,0,@p21 output,0,@p23 output,0
+      select @p4, @p6, @p8, @p10, @p12, @p15, @p17, @p19, @p21, @p23
+
+  - id: q7
+    title: "Query 7"
+    sql: |
+      SELECT     tblCustomerSite.*,CAST(tblCustomerSite.RecordID AS bigint)
+                                AS RecIDInt, [vuSiteWithPrimaryCustID].PrimaryCustID
+      FROM         tblCustomerSite LEFT OUTER JOIN
+      vuSiteWithPrimaryCustID ON tblCustomerSite.CustSiteID = vuSiteWithPrimaryCustID.vuSiteID
+
+      WHERE tblCustomerSite.CustSiteID=18103
+
+  - id: q8
+    title: "Query 8"
+    sql: |
+      exec sp_executesql N'DECLARE @PartMarkupID int, @LaborRateID int, @CustID int
+
+      SET @CustID = @P1
+
+      SET @PartMarkupID = (SELECT TOP 1 PartMarkupID FROM tblCustPartPricing
+      WHERE (CustID = @CustID) AND
+            (PartID IS NULL) AND
+          (PartMarkupID IS NOT NULL) AND
+            (CategoryID IS NULL) AND
+            (SubCategoryID IS NULL) AND
+            ((DateStarted IS NULL) OR (GETDATE() >= DateStarted)) AND
+            ((DateEnded IS NULL) OR (GETDATE() < DateEnded)))
+
+      SET @LaborRateID = (SELECT TOP 1 RateTableID FROM tblCustLaborPricing
+      WHERE (CustID = @CustID) AND
+            (RepairID IS NULL) AND
+          (RateTableID IS NOT NULL) AND
+          (CoverageHourID IS NULL) AND
+            ((DateStarted IS NULL) OR (GETDATE() >= DateStarted)) AND
+            ((DateEnded IS NULL) OR (GETDATE() < DateEnded)))
+
+      SELECT ISNULL(@PartMarkupID,0) AS PartMarkupID, ISNULL(@LaborRateID, 0) AS LaborRateID',N'@P1 int',14004
+
+
+  - id: q9
+    title: "Query 9"
+    sql: |
+      declare @p3 int
+      set @p3=0
+      declare @p5 int
+      set @p5=0
+      exec sp_executesql N'SET @P1 = (SELECT COUNT(*) FROM tblSvcOrderDetail WHERE SvcOrderID = @P2 AND TransType = 1)
+      SET @P3 = (SELECT COUNT(*) FROM tblSvcOrderDetail WHERE SvcOrderID = @P4 AND TransType = 2)',N'@P1 int OUTPUT,@P2 int,@P3 int OUTPUT,@P4 int',@p3 output,-1,@p5 output,-1
+      select @p3, @p5
+
+
+  - id: q10
+    title: "Query 10"
+    sql: |
+      exec sp_executesql N'DECLARE @PartMarkupID int, @LaborRateID int, @CustID int
+
+      SET @CustID = @P1
+
+      SET @PartMarkupID = (SELECT TOP 1 PartMarkupID FROM tblCustPartPricing
+      WHERE (CustID = @CustID) AND
+            (PartID IS NULL) AND
+          (PartMarkupID IS NOT NULL) AND
+            (CategoryID IS NULL) AND
+            (SubCategoryID IS NULL) AND
+            ((DateStarted IS NULL) OR (GETDATE() >= DateStarted)) AND
+            ((DateEnded IS NULL) OR (GETDATE() < DateEnded)))
+
+      SET @LaborRateID = (SELECT TOP 1 RateTableID FROM tblCustLaborPricing
+      WHERE (CustID = @CustID) AND
+            (RepairID IS NULL) AND
+          (RateTableID IS NOT NULL) AND
+          (CoverageHourID IS NULL) AND
+            ((DateStarted IS NULL) OR (GETDATE() >= DateStarted)) AND
+            ((DateEnded IS NULL) OR (GETDATE() < DateEnded)))
+
+      SELECT ISNULL(@PartMarkupID,0) AS PartMarkupID, ISNULL(@LaborRateID, 0) AS LaborRateID',N'@P1 int',14004
+
+
+  - id: q11
+    title: "Query 11"
+    sql: |
+      exec sp_executesql N'DECLARE @AgrmntID int, @Status tinyint, @CheckDate datetime, @CustID int,
+              @CustSiteID int, @EquipID int
+
+      SET @AgrmntID = @P1
+      SET @Status = ISNULL((SELECT Status FROM tblAgreement WHERE AgrmntID = @AgrmntID), 0)
+      SET @CheckDate = @P2
+      SET @CustID = @P3
+      SET @CustSiteID = @P4
+      SET @EquipID = @P5
+
+      IF @EquipID = 0
+        SET @EquipID = NULL
+
+      /* we might just check if the customer has an active agrmnt at a given time but if agrmntID is > 0 we just check on that ID, we pass in a date then check if date is active */
+      /* we look if it falls between teh start date and a second before teh end date ends */
+      SELECT AgrmntID, (CASE WHEN (Status IN (1, 4)) THEN Status
+            ELSE (CASE (SELECT COUNT(*) FROM tblAgreement WHERE AgrmntID =
+                        (CASE WHEN @AgrmntID > 0 THEN @AgrmntID ELSE AgrmntID END) AND CustID = @CustID AND
+                        ((CustSiteID = @CustSiteID) OR (LimitToSite = 0)) AND @CheckDate BETWEEN StartDate AND DATEADD(s, -1, DATEADD(d, 1, EndDate)))
+                  WHEN 0 THEN 10 ELSE 2 END)
+            END) AS Status,
+            /* if we didnt pass in an equip then return top 1 covered equip for this site */
+            ISNULL(@EquipID, (SELECT     TOP 1 tblAgrmntEquip.CustEquipID
+          FROM         tblAgrmntEquip INNER JOIN
+                            tblCustEquip ON tblAgrmntEquip.CustEquipID = tblCustEquip.CustEquipID
+          WHERE     (tblAgrmntEquip.AgrmntID = tblAgreement.AgrmntID) AND (tblCustEquip.CustSiteID = @CustSiteID)
+          ORDER BY tblAgrmntEquip.LineItemNum)) AS CoveredEquipID
+      FROM tblAgreement
+      WHERE AgrmntID = (CASE WHEN @AgrmntID > 0 THEN @AgrmntID ELSE AgrmntID END)
+            AND CustID = @CustID AND ((CustSiteID = @CustSiteID) OR (LimitToSite = 0)) AND
+          ((@AgrmntID > 0) OR (Status = 2)) AND
+          /* if we specify an equipment tehn chek if that equip is covered */
+                    ((@EquipID IS NULL) OR  (dbo.fnIsEquipCoveredUnderAgrmnt(@EquipID, tblAgreement.AgrmntID) = 1))
+      /* wehn looking for a specific agrmnt tehn return taht agrmnt regardless of the status, but when looking if a site has active agrmnts tehn return only the active agrmnts*/',N'@P1 int,@P2 datetime2(7),@P3 int,@P4 int,@P5 int',0,'2025-11-30 00:00:00',14004,18103,0
+
+  - id: q12
+    title: "Query 12"
+    sql: |
+      declare @p4 float
+      set @p4=0
+      declare @p6 float
+      set @p6=0
+      declare @p8 float
+      set @p8=0
+      declare @p10 float
+      set @p10=0
+      declare @p12 float
+      set @p12=0
+      declare @p15 float
+      set @p15=0
+      declare @p17 float
+      set @p17=0
+      declare @p19 float
+      set @p19=0
+      declare @p21 float
+      set @p21=0
+      declare @p23 float
+      set @p23=0
+      exec sp_executesql N'DECLARE @TempInv money,
+        @TempPmnt money
+
+      IF @P1 = 1
+      BEGIN
+        /* Current Total */
+        SET @P2 = dbo.[GetCustTotal](@P3, GetDate(), 0)
+
+        /* 30 */
+        SET @P4 = dbo.[GetCustTotal](@P5, GetDate(), 30)
+
+        /* 60 */
+        SET @P6 = dbo.[GetCustTotal](@P7, GetDate(), 60)
+
+        /* 90 */
+        SET @P8 = dbo.[GetCustTotal](@P9, GetDate(), 90)
+        /* Over 90 */
+        SET @P10 = dbo.[GetCustTotal](@P11, GetDate(), 91)
+      END
+
+      IF @P12 = 1
+      BEGIN
+
+        /* Current Total */
+        SET @P13 = dbo.[GetSiteTotal](@P14, GetDate(), 0)
+        /* 30 */
+        SET @P15 = dbo.[GetSiteTotal](@P16, GetDate(), 30)
+        /* 60 */
+        SET @P17 = dbo.[GetSiteTotal](@P18, GetDate(), 60)
+        /* 90 */
+        SET @P19 = dbo.[GetSiteTotal](@P20, GetDate(), 90)
+        /* Over 90 */
+        SET @P21 = dbo.[GetSiteTotal](@P22, GetDate(), 91)
+
+      END',N'@P1 bit,@P2 float OUTPUT,@P3 int,@P4 float OUTPUT,@P5 int,@P6 float OUTPUT,@P7 int,@P8 float OUTPUT,@P9 int,@P10 float OUTPUT,@P11 int,@P12 bit,@P13 float OUTPUT,@P14 int,@P15 float OUTPUT,@P16 int,@P17 float OUTPUT,@P18 int,@P19 float OUTPUT,@P20 int,@P21 float OUTPUT,@P22 int',1,@p4 output,14004,@p6 output,14004,@p8 output,14004,@p10 output,14004,@p12 output,14004,1,@p15 output,18103,@p17 output,18103,@p19 output,18103,@p21 output,18103,@p23 output,18103
+      select @p4, @p6, @p8, @p10, @p12, @p15, @p17, @p19, @p21, @p23

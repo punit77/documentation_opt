@@ -1,0 +1,36 @@
+name: "spupdatepartstock"
+definition: |
+  CREATE PROCEDURE [dbo].[spUpdatePartCost]
+    (
+      @PartID int,
+      --when updating vendor pricing we now only update the highest cost
+      @HighestCostOnly bit
+    )
+  AS
+
+
+  DECLARE @CurrentCost money, @HighestCost money, @VendorMax money
+
+    /* Update current cost */
+  SET @CurrentCost = ISNULL((SELECT TOP 1 ISNULL(dbo.tblPOReceiptDetail.UnitCost, 0)
+                    FROM dbo.tblPOReceipt
+                    INNER JOIN dbo.tblPOReceiptDetail ON dbo.tblPOReceipt.POReceiptID = dbo.tblPOReceiptDetail.POReceiptID
+                    INNER JOIN dbo.tblPurchOrderDetail ON dbo.tblPOReceiptDetail.PODetailID = dbo.tblPurchOrderDetail.PODetailID
+                    WHERE     (dbo.tblPurchOrderDetail.PartID = @PartID)
+                    ORDER BY dbo.tblPOReceipt.DateReceived DESC,
+                                      tblPOReceiptDetail.RcptDetailID DESC), 0)
+                                      
+  SET @HighestCost = ISNULL((SELECT TOP 1 ISNULL(dbo.tblPOReceiptDetail.UnitCost, 0) FROM dbo.tblPOReceiptDetail INNER JOIN
+                            dbo.tblPurchOrderDetail ON dbo.tblPOReceiptDetail.PODetailID = dbo.tblPurchOrderDetail.PODetailID
+                            WHERE     (dbo.tblPurchOrderDetail.PartID = @PartID)
+                            ORDER BY dbo.tblPOReceiptDetail.UnitCost DESC), 0)
+
+  SET @VendorMax = ISNULL((SELECT TOP 1 ISNULL(CostAmt, 0) FROM dbo.tblAltVendor  WHERE PartID = @PartID ORDER BY CostAmt DESC), 0)
+
+  IF (@VendorMax > @HighestCost) AND ((SELECT ISNULL(UpdateCostWVendorPricing, 0) FROM tblCompanyPreference) = 1) 
+    SET @HighestCost = @VendorMax
+
+  UPDATE tblParts
+  SET CurrentCost = (CASE ISNULL(@HighestCostOnly, 0) WHEN 1 THEN CurrentCost ELSE @CurrentCost END),
+    HighestCost = @HighestCost
+  WHERE PartID = @PartID

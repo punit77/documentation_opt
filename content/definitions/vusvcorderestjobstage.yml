@@ -1,0 +1,9 @@
+name: "vusvcorderestjobstage"
+definition: |
+  CREATE VIEW [dbo].[vuSvcOrderEstJobStage]
+  AS
+  SELECT     *, ISNULL
+                            ((SELECT     Status
+                                FROM         tblSvcOrderEstChange
+                                WHERE     EstChangeID = tblSvcOrderEstJobStage.EstChangeID), 0) AS ChangeStatus
+  FROM         dbo.tblSvcOrderEstJobStage

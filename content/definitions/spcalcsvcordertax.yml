@@ -1,0 +1,84 @@
+name: "spcalcsvcordertax"
+definition: |
+  CREATE PROCEDURE [dbo].[spCalcSvcOrderTax](@SvcOrderID INT)
+  AS
+  BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @TaxGrpID INT
+    DECLARE @IsInstall BIT
+    SELECT @TaxGrpID = TaxGrpID, @IsInstall = IsInstall FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID
+    --IF @IsInstall = 1 RETURN
+    
+    DECLARE @NeedsUpdate BIT
+    SET @NeedsUpdate = (SELECT COUNT(*) FROM tblTaxCode AS C
+        WHERE C.TaxCodeID IN(SELECT TaxCodeID FROM tblTaxGrpDetail WHERE TaxGrpID = @TaxGrpID)
+        AND (C.MaxSaleAmt > 0 OR (C.TaxLabor = 1 AND C.TaxLaborWithItems = 1)))
+    IF @NeedsUpdate = 0 RETURN
+      
+    DECLARE @HasItems BIT
+    DECLARE @SvcItems TABLE(ID INT, TransType INT, SaleTotal MONEY, TaxTotal MONEY, OldTotal MONEY)
+
+    IF @IsInstall = 0
+    BEGIN
+      SET @HasItems = (SELECT COUNT(*) FROM tblSvcOrderDetail
+            WHERE SvcOrderID = @SvcOrderID AND TransType = 1 AND BilledAmt IS NULL /*InvoiceID IS NULL*/)
+
+      INSERT INTO @SvcItems
+      SELECT T1.SvcDetailID, T1.TransType, (T1.LineSaleTotal - T1.LineTaxTotal), T1.LineTaxTotal,
+        (SELECT ISNULL(SUM(T2.LineSaleTotal - T2.LineTaxTotal), 0)
+        FROM tblSvcOrderDetail AS T2
+        WHERE T2.SvcOrderID = T1.SvcOrderID AND BilledAmt IS NULL /*InvoiceID IS NULL*/ AND (
+        T2.LineItemNum < T1.LineItemNum OR (
+        T2.LineItemNum = T1.LineItemNum AND T2.SvcDetailID < T1.SvcDetailID)
+        ))
+      FROM tblSvcOrderDetail AS T1
+      WHERE T1.SvcOrderID = @SvcOrderID AND BilledAmt IS NULL /*InvoiceID IS NULL*/ AND Quantity <> 0 AND Taxable = 1
+      ORDER BY T1.LineItemNum, T1.SvcDetailID
+    END
+    ELSE
+    BEGIN
+      SET @HasItems = (SELECT COUNT(*) FROM tblSvcOrderEst
+            WHERE SvcOrderID = @SvcOrderID AND TransType = 1 AND (BilledAmt IS NULL OR BilledAmt = 0))	
+  ------cehck why we need to cehck if item was not billed yet
+      INSERT INTO @SvcItems
+      SELECT T1.SvcEstDetailID, T1.TransType, (T1.LineSaleTotal - T1.LineTaxTotal), T1.LineTaxTotal,
+        (SELECT ISNULL(SUM(T2.LineSaleTotal - T2.LineTaxTotal), 0)
+        FROM tblSvcOrderEst AS T2
+        WHERE T2.SvcOrderID = T1.SvcOrderID AND (BilledAmt IS NULL OR BilledAmt = 0) AND (
+        T2.LineItemNum < T1.LineItemNum OR (
+        T2.LineItemNum = T1.LineItemNum AND T2.SvcEstDetailID < T1.SvcEstDetailID)
+        ))
+      FROM tblSvcOrderEst AS T1
+      WHERE T1.SvcOrderID = @SvcOrderID AND (BilledAmt IS NULL OR BilledAmt = 0) AND Quantity <> 0 AND Taxable = 1
+      ORDER BY T1.LineItemNum, T1.SvcEstDetailID
+    END
+
+    UPDATE @SvcItems SET
+      TaxTotal = dbo.fnGetItemTaxAmt2(
+        @TaxGrpID,
+        TransType,
+        SaleTotal,
+        @HasItems,
+        OldTotal)
+
+    IF @IsInstall = 0
+    BEGIN
+      UPDATE tblSvcOrderDetail SET
+        LineTaxTotal = T1.TaxTotal,
+        LineSaleTotal = T1.SaleTotal + T1.TaxTotal,
+        UnitTaxAmt = T1.TaxTotal / T2.Quantity
+      FROM @SvcItems AS T1, tblSvcOrderDetail AS T2
+      WHERE T2.SvcDetailID = T1.ID
+    END
+    ELSE
+    BEGIN
+      UPDATE tblSvcOrderEst SET
+        LineTaxTotal = T1.TaxTotal,
+        LineSaleTotal = T1.SaleTotal + T1.TaxTotal,
+        UnitTaxAmt = T1.TaxTotal / T2.Quantity
+  ------cehck unit tax amt calc, seems taht its wrong if there is init chg!!
+      FROM @SvcItems AS T1, tblSvcOrderEst AS T2
+      WHERE T2.SvcEstDetailID = T1.ID
+    END
+  END

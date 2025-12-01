@@ -1,0 +1,25 @@
+name: "fnIsEquipCoveredUnderAgrmnt"
+definition: |
+  CREATE FUNCTION [dbo].[fnIsEquipCoveredUnderAgrmnt] 
+  (
+    -- Add the parameters for the function here
+    @EquipID int,
+    @AgrmntID int
+  )
+  RETURNS bit
+  AS
+  BEGIN
+
+    DECLARE @LimitToEquip bit, @EquipCovered bit
+    SET @LimitToEquip = ISNULL((SELECT LimitToEquip FROM tblAgreement WHERE AgrmntID = @AgrmntID), 1)
+
+    SET @EquipCovered = 
+
+      (SELECT CASE WHEN(EXISTS(SELECT CustEquipID FROM tblAgrmntEquip WHERE AgrmntID = @AgrmntID AND CustEquipID = @EquipID)) OR 
+
+      (NOT EXISTS(SELECT CustEquipID FROM tblAgrmntEquip WHERE AgrmntID = @AgrmntID)) THEN 1 ELSE 0 END)		
+
+
+    RETURN (CASE WHEN (@LimitToEquip = 0) OR (@EquipCovered = 1) THEN 1 ELSE 0 END)
+
+  END

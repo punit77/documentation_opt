@@ -1,0 +1,18 @@
+name: "VULOOKUPCUSTSELECT"
+definition: |
+  CREATE VIEW [dbo].[vuLookupCustSelect]
+        AS
+        SELECT    TOP 100 PERCENT dbo.tblCustomer.CustID, dbo.tblCustomer.CustName, dbo.tblCustomer.Contact, dbo.tblCustomer.AltContact, 
+                        dbo.tblCustomer.CompanyName, dbo.tblCustomer.BillAddress_Addr2, dbo.tblCustomer.BillAddress_Addr3, dbo.tblCustomer.Phone, 
+                        dbo.tblCustomer.AltPhone, dbo.tblCustomer.Mobile, dbo.tblCustomer.Pager, dbo.tblCustomer.Fax, dbo.tblCustomer.Email, dbo.tblCustomer.WebSite, 
+                        dbo.tblCustomer.CustTypeID, dbo.tblCustomer.IsActive, dbo.tblCustomer.SalesRepID, dbo.tblCustomer.BillAddress_City, 
+                        dbo.tblCustomer.BillAddress_State, dbo.tblCustomer.BillAddress_PostalCode, dbo.tblCustomer.BillAddress_Country, dbo.tblCustomer.AltAccountNo, 
+                        dbo.tblCustomer.RecordID, dbo.tblCustomer.CampaignID, dbo.tblCustomer.TermID, dbo.tblCustomer.FirstName, dbo.tblCustomer.LastName, 
+                        dbo.tblCustomer.OnCreditHold, dbo.tblCustomer.CreditLimit, dbo.tblCustomer.CF1, dbo.tblCustomer.CF2, dbo.tblCustomer.CF3, dbo.tblCustomer.CF4, 
+                        dbo.tblCustomer.CF5, dbo.tblCustomer.CF6, dbo.tblCustomer.CF7, dbo.tblCustomer.CF8, dbo.tblCustomer.CF9, dbo.tblCustomer.CF10, 
+                        dbo.tblCustomer.CF11, dbo.tblCustomer.CF12, dbo.tblCustomer.CF13, dbo.tblCustomer.CF14, dbo.tblCustomer.CF15, dbo.tblCustomer.CF16, 
+                        dbo.tblCustomer.CF17, dbo.tblCustomer.CF18, dbo.tblCustomer.CF19, dbo.tblCustomer.CF20, dbo.tblCustomer.CF21, dbo.tblCustomer.CF22, 
+                        dbo.tblCustomer.CF23, dbo.tblCustomer.CF24, dbo.tblCustomer.CF25, dbo.tblCustomer.CF26, dbo.tblCustomer.CF27, dbo.tblCustomer.CF28, 
+                        dbo.tblCustomer.CF29, dbo.tblCustomer.CF30, dbo.tblCustSiteLink.CustSiteID, dbo.tblCustSiteLink.IsPrimary, dbo.tblCustSiteLink.CustSiteLinkID
+        FROM      dbo.tblCustomer LEFT OUTER JOIN
+                        dbo.tblCustSiteLink ON dbo.tblCustomer.CustID = dbo.tblCustSiteLink.CustID

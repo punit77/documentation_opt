@@ -1,0 +1,52 @@
+name: "Sp_SvcOrderOpen"
+definition: |
+  CREATE Proc [dbo].[Sp_SvcOrderOpen]
+  (
+    @SvcOrderID  int,             
+    @Check int,
+    @SvcIsValid int,
+    @OpenedUserID int,
+    @myOut int=0 output
+  )
+  as
+  BEGIN
+  DECLARE @RecCount int--,@OpenedUserID int
+  --Declare @sql as nvarchar(max)     
+  
+  IF @Check = 0
+  BEGIN
+    SELECT @SvcIsValid = ISNULL(OpenedCount,0)  FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID  and ISNULL(OpenForm, 0) <> 0
+  END
+  IF @Check = 1
+  BEGIN
+    SELECT @SvcIsValid = ISNULL(OpenedCount,0)  FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID  and ISNULL(OpenForm, 0) <> 0
+    SET @RecCount = (SELECT ISNULL(OpenedCount,0)  FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)+1
+    UPDATE tblSvcOrder SET OpenForm = 1,OpenedCount=@RecCount  WHERE SvcOrderID = @SvcOrderID  and isnull(OpenedUserID,0)=0  /*Can be done in single query*/
+    if (@RecCount=1)
+    UPDATE tblSvcOrder SET OpenedUserID=@OpenedUserID  WHERE SvcOrderID = @SvcOrderID and isnull(OpenedUserID,0)=0
+    --SET @SvcIsValid=0
+  END
+  IF @Check = 2
+  BEGIN
+
+    SET @RecCount = (SELECT ISNULL(OpenedCount,0)  FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID and OpenedUserID=@OpenedUserID)
+    if @RecCount >= 1
+    BEGIN
+    --UPDATE tblSvcOrder SET OpenForm = 0,OpenedCount=0,OpenedUserID=0  WHERE SvcOrderID = @SvcOrderID and OpenedUserID=@OpenedUserID
+    UPDATE tblSvcOrder SET OpenForm = @RecCount-1,OpenedCount=@RecCount-1,OpenedUserID=(case when @RecCount-1 =0 then 0 else OpenedUserID end)  WHERE SvcOrderID = @SvcOrderID and OpenedUserID=@OpenedUserID
+    --if @RecCount > 0
+    UPDATE tblSvcOrder SET OpenedCount=@RecCount-1  WHERE SvcOrderID = @SvcOrderID
+    END
+    SET @SvcIsValid=0
+  END
+  IF @Check = 3
+  BEGIN
+    UPDATE tblSvcOrder SET OpenForm = 0,OpenedCount=0,OpenedUserID=0  where isnull(OpenForm,0)<>0
+  -- UPDATE tblSvcOrder SET OpenForm = 0,OpenedCount=0 where OpenForm is not null
+    SET @SvcIsValid=0
+  END
+  --Set :RecCount  =@SvcIsValid
+
+    SET @myOut=ISNULL(@SvcIsValid, 0)
+  --  SET @myOut=123
+  END

@@ -1,0 +1,13 @@
+name: "GetSiteTotal"
+definition: |
+  CREATE FUNCTION [dbo].[GetSiteTotal]
+  (
+    @SiteID int,
+    @CurDate datetime,
+    @days int = 0
+  )
+  RETURNS money
+  AS
+  BEGIN
+    RETURN dbo.GetSiteTotalForCust(@SiteID, @CurDate, @days, -1)
+  END

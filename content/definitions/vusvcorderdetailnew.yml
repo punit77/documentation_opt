@@ -1,0 +1,14 @@
+name: "VuSvcOrderDetailNew"
+definition: |
+  CREATE VIEW [dbo].[VuSvcOrderDetailNew]
+  as
+  SELECT     SvcDetailID, SvcOrderID, LineItemNum, InvoiceID, ScheduleID, QBGLAccountID,
+            TransType, TransTypeID, LineGroupID, InvoiceDesc, EntryDate,
+            Printable, UserCreated,
+            TimeCreated, UserModified, TimeModified, RecordID, BilledAmt
+                        ,stuff((SELECT distinct ', ' + cast(T2.InvoiceID as varchar(10))
+            FROM tblInvoiceDetail t2
+            inner join tblInvoice c on c.InvoiceID=t2.InvoiceID AND isnull(c.Void,0)<>1 and isnull(c.Cleared,0)<>1
+            where t2.SvcDetailID = tblSvcOrderDetail.SvcDetailID and t2.Svcorderid = tblSvcOrderDetail.Svcorderid 
+            FOR XML PATH('')),1,1,'')  as 'InvoiceList'
+  FROM         dbo.tblSvcOrderDetail

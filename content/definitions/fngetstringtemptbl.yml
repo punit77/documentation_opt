@@ -1,0 +1,69 @@
+name: "fnGetStringTempTbl"
+definition: |
+  CREATE FUNCTION [dbo].[fnGetStringTempTbl]
+  (
+    @list text
+  )
+  RETURNS @tbl TABLE (RecID int)
+  AS
+  BEGIN
+
+        DECLARE @pos      int, 
+                @textpos  int, 
+                @nextpos  int, 
+                @str      varchar(4000), 
+                @tmpstr   varchar(4000), 
+                @leftover varchar(4000) 
+
+        SET @textpos = 1 
+        SET @leftover = '' 
+        WHILE @textpos <= datalength(@list)
+        BEGIN 
+          SET @nextpos =  @textpos + 4000 - datalength(@leftover)
+          SET @tmpstr = ltrim(@leftover + substring(@list, @textpos, @nextpos - 1)) 
+
+    /* We need to use the following 2 lines since we used to pass down values like this: ',''1234'',''6789'',' */
+        SET @tmpstr = REPLACE(@tmpstr, ',', ' ')
+  -- it done for mobile devices , in Odata "," is reserve delemiter
+        SET @tmpstr = REPLACE(@tmpstr, ';', ' ')
+          SET @tmpstr = REPLACE(@tmpstr, '''', '')
+
+          SET @textpos = @nextpos 
+
+          SET @pos = charindex(' ', @tmpstr) 
+          WHILE @pos > 0 
+          BEGIN 
+              SET @str = substring(@tmpstr, 1, @pos - 1) 
+              IF @str <> ' ' INSERT @tbl (RecID) VALUES(convert(int, @str)) 
+              SET @tmpstr = ltrim(substring(@tmpstr, @pos + 1, datalength(@tmpstr))) 
+              SET @pos = charindex(' ', @tmpstr) 
+          END 
+
+
+          SET @leftover = @tmpstr 
+        END 
+
+
+        IF ltrim(rtrim(@leftover)) <> '' 
+          INSERT @tbl (RecID) VALUES(convert(int, @leftover)) 
+
+
+        RETURN 
+
+
+  /* OLD STUFF
+    DECLARE @Position int
+    SET @Position = 1
+
+    WHILE (CHARINDEX(',''', @ValueStr, @Position) <> 0)
+    BEGIN
+      INSERT INTO @TempTable VALUES (SUBSTRING(@ValueStr, (@Position+2), (CHARINDEX(''',', @ValueStr, @Position) - (@Position+2))))
+    
+      SET @position = CHARINDEX(''',', @ValueStr, @Position) + 1
+
+    END
+
+    RETURN
+
+  */
+  END

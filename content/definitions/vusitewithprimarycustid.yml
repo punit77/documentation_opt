@@ -1,0 +1,9 @@
+name: "vuSiteWithPrimaryCustID"
+definition: |
+  CREATE VIEW [dbo].[vuSiteWithPrimaryCustID]
+  AS
+  SELECT     CustSiteID AS vuSiteID,
+                            (SELECT     TOP 1 CustID
+                              FROM          dbo.tblCustSiteLink
+                              WHERE      (CustSiteID = dbo.tblCustomerSite.CustSiteID) AND (IsPrimary = 1)) AS PrimaryCustID
+  FROM         dbo.tblCustomerSite

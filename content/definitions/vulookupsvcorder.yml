@@ -1,0 +1,41 @@
+name: "vulookupsvcorder"
+definition: |
+  CREATE VIEW [dbo].[vuLookupSvcOrder] AS
+  SELECT   FtblSvcOrder.SvcOrderID, FtblSvcOrder.CustID, FtblSvcOrder.CustSiteID, FtblSvcOrder.ResidentID, FtblSvcOrder.LocationID, FtblSvcOrder.CampaignID, 
+                        FtblSvcOrder.Status, FtblSvcOrder.PrevStatus, FtblSvcOrder.SubStatusID, FtblSvcOrder.ShortDesc, FtblSvcOrder.SvcTypeID, FtblSvcOrder.IsInstall, 
+                        FtblSvcOrder.ProblemID, FtblSvcOrder.ProblemDesc, FtblSvcOrder.RateTableID, FtblSvcOrder.PartMarkupID, FtblSvcOrder.DefTechID, 
+                        FtblSvcOrder.EstHours, FtblSvcOrder.Priority, FtblSvcOrder.MunicipalID, FtblSvcOrder.AgrmntID, FtblSvcOrder.ContactName, 
+                        FtblSvcOrder.EstVersionNum, FtblSvcOrder.EstimateText, FtblSvcOrder.EstimateNote, FtblSvcOrder.ShowItemPrice, FtblSvcOrder.AdditionalAmt, 
+                        FtblSvcOrder.SvcAmount, FtblSvcOrder.EstimateTaxAmt, FtblSvcOrder.SvcTaxAmount, FtblSvcOrder.SvcAmtBilled, FtblSvcOrder.JobBilledType, 
+                        FtblSvcOrder.RetainageHeld, FtblSvcOrder.AdjustToAmt, FtblSvcOrder.PctComplete, FtblSvcOrder.OverheadPct, FtblSvcOrder.LbrOverheadPct, 
+                        FtblSvcOrder.SvcCost, FtblSvcOrder.Instructions, FtblSvcOrder.CustPO, FtblSvcOrder.CustEquipID, FtblSvcOrder.IsInspection, FtblSvcOrder.SalesTax, 
+                        FtblSvcOrder.TaxGrpID, FtblSvcOrder.EstPartCost, FtblSvcOrder.EstLaborCost, FtblSvcOrder.RetainagePct, FtblSvcOrder.ActualPartCost, 
+                        FtblSvcOrder.NonStockPartCost, FtblSvcOrder.ActualLaborCost, FtblSvcOrder.DatePromised, FtblSvcOrder.TimeFromPromised, 
+                        FtblSvcOrder.TimeToPromised, FtblSvcOrder.BillableHours, FtblSvcOrder.ActualHours, FtblSvcOrder.SalesmanID, FtblSvcOrder.SvcDateAdded, 
+                        FtblSvcOrder.SvcTimeAdded, FtblSvcOrder.SvcUserAdded, FtblSvcOrder.DateActivated, FtblSvcOrder.FollowUp, FtblSvcOrder.DatesOpen, 
+                        FtblSvcOrder.RecurrenceValue, FtblSvcOrder.UseRecurrence, FtblSvcOrder.SvcDateComplete, FtblSvcOrder.SvcUserComplete, 
+                        FtblSvcOrder.FormanEmpID, FtblSvcOrder.PurRequisitionEmpID, FtblSvcOrder.SvcRequestID, FtblSvcOrder.CF1, FtblSvcOrder.CF2, FtblSvcOrder.CF3, 
+                        FtblSvcOrder.CF4, FtblSvcOrder.CF5, FtblSvcOrder.CF6, FtblSvcOrder.CF7, FtblSvcOrder.CF8, FtblSvcOrder.CF9, FtblSvcOrder.CF10, FtblSvcOrder.CF11, 
+                        FtblSvcOrder.CF12, FtblSvcOrder.CF13, FtblSvcOrder.CF14, FtblSvcOrder.CF15, FtblSvcOrder.CF16, FtblSvcOrder.CF17, FtblSvcOrder.CF18, 
+                        FtblSvcOrder.CF19, FtblSvcOrder.CF20, FtblSvcOrder.CF21, FtblSvcOrder.CF22, FtblSvcOrder.CF23, FtblSvcOrder.CF24, FtblSvcOrder.CF25, 
+                        FtblSvcOrder.CF26, FtblSvcOrder.CF27, FtblSvcOrder.CF28, FtblSvcOrder.CF29, FtblSvcOrder.CF30, FtblSvcOrder.UserCreated, 
+                        FtblSvcOrder.TimeCreated, FtblSvcOrder.UserModified, FtblSvcOrder.TimeModified, FtblSvcOrder.RecordID, tblCustomer.CustName, 
+                        tblCustomerSite.SiteName, tblCustSiteResident.ResidentName, FtblSvcOrder.CustEquipNameList AS EquipName, tblCustEquip.ModelNum AS EquipModelNum, 
+                        tblCustEquip.SerialNum AS EquipSerialNum, tblManufacturer.ManufactureName AS EquipManufactureName, tblCustEquip.EquipLocation, 
+                        tblCustEquip.CF1 AS EquipCF1, tblCustEquip.CF2 AS EquipCF2, tblCustEquip.CF3 AS EquipCF3, tblCustEquip.CF4 AS EquipCF4, 
+                        tblCustEquip.CF5 AS EquipCF5, tblCustomerSite.Address2, tblCustomerSite.Address3, tblCustomerSite.City, tblCustomerSite.State, 
+                        tblCustomerSite.PostalCode, tblCustomerSite.Contact AS SiteContact, tblCustomerSite.Email AS SiteEmail, tblCustomerSite.Phone AS SitePhone, 
+                        tblSvcOrderSched.StartTime AS FirstSchedStartTime, tblSvcOrderSched.ScheduleID AS FirstScheduleID,FtblSvcOrder.AgreementNo,tblCustomer.TermID as CustomerTerms
+  FROM         FtblSvcOrder LEFT OUTER JOIN
+                        tblSvcOrderSched ON tblSvcOrderSched.ScheduleID =
+                            (SELECT     TOP 1 ScheduleID
+                              FROM          tblSvcOrderSched
+                              WHERE      (SvcOrderID = FtblSvcOrder.SvcOrderID) AND (Status <> 5)
+                              ORDER BY StartTime) LEFT OUTER JOIN
+                        tblCustEquip LEFT OUTER JOIN
+                        tblManufacturer ON tblCustEquip.ManufactureID = tblManufacturer.ManufactureID ON 
+                        FtblSvcOrder.CustEquipID = tblCustEquip.CustEquipID LEFT OUTER JOIN
+                        tblCustomerSite AS tblCustomerSite ON FtblSvcOrder.CustSiteID = tblCustomerSite.CustSiteID LEFT OUTER JOIN
+                        tblCustomer AS tblCustomer ON FtblSvcOrder.CustID = tblCustomer.CustID LEFT OUTER JOIN
+                        tblCustSiteResident AS tblCustSiteResident ON FtblSvcOrder.ResidentID = tblCustSiteResident.ResidentID
+

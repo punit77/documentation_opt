@@ -1,0 +1,34 @@
+name: "spconvertpartstoequip"
+definition: |
+  CREATE PROCEDURE [dbo].[spConvertPartsToEquip] 
+    @SvcOrderID int, 
+    @SvcDetailID int,
+      @UserName varchar(20)
+
+  AS
+  BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO tblCustEquip (SvcDetailID, CustID, CustSiteID, ResidentID, LocationID, PartID, ManufactureID, ModelNum, SerialNum, InstalledByComp, InstalledBy, DateInstalled,
+                IsActive, UserCreated, TimeCreated, CF1, CF2, CF3, CF4, CF5, WarrantyStarted, WarrantyEnds, PartsWarrantyStart, PartsWarrantyEnd)
+    SELECT      dbo.tblSvcOrderDetail.SvcDetailID, dbo.tblSvcOrder.CustID, dbo.tblSvcOrder.CustSiteID, dbo.tblSvcOrder.ResidentID, dbo.tblSvcOrder.LocationID, dbo.tblParts.PartNumber, 
+                dbo.tblParts.ManufacturerID, dbo.tblParts.ModelNumber, dbo.tblPartSerial.SerialNum, 1, dbo.tblSvcOrderDetail.TechID, 
+                dbo.tblSvcOrderDetail.EntryDate, -1, @UserName, GetDate(), tblParts.CF1, tblParts.CF2, tblParts.CF3, tblParts.CF4, tblParts.CF5, 
+                dbo.piGetDate(GetDate()),  DATEADD(month, tblParts.Warranty, dbo.piGetDate(GetDate())), dbo.piGetDate(GetDate()), DATEADD(month, tblParts.PartsWarranty, dbo.piGetDate(GetDate()))
+    FROM        dbo.tblSvcOrderDetail INNER JOIN
+                dbo.tblParts ON dbo.tblSvcOrderDetail.PartID = dbo.tblParts.PartID INNER JOIN
+                dbo.tblSvcOrder ON dbo.tblSvcOrderDetail.SvcOrderID = dbo.tblSvcOrder.SvcOrderID LEFT OUTER JOIN
+                dbo.tblPartSerial ON dbo.tblSvcOrderDetail.SvcDetailID = dbo.tblPartSerial.TransID2
+    WHERE       (dbo.tblSvcOrderDetail.TransType = 1 AND tblSvcOrderDetail.CustEquipIDCreated IS NULL AND ConvertPartToEquip = 1 AND
+                ((@SvcDetailID IS NOT NULL AND SvcDetailID = @SvcDetailID) OR (@SvcDetailID IS NULL AND tblSvcOrderDetail.SvcOrderID = @SvcOrderID)))
+
+    /* update CustEquipIDCreated */
+    UPDATE tblSvcOrderDetail SET CustEquipIDCreated = (SELECT TOP 1 CustEquipID FROM tblCustEquip WHERE SvcDetailID = tblSvcOrderDetail.SvcDetailID)    
+    WHERE ((@SvcDetailID IS NOT NULL AND SvcDetailID = @SvcDetailID) OR (@SvcDetailID IS NULL AND SvcOrderID = @SvcOrderID)) AND (CustEquipIDCreated IS NULL) AND
+      (EXISTS(SELECT TOP 1 CustEquipID FROM tblCustEquip WHERE SvcDetailID = tblSvcOrderDetail.SvcDetailID))
+
+    /* update CustEquipID it it wasnt linked to an equip yet */
+    UPDATE tblSvcOrderDetail SET CustEquipID = (SELECT TOP 1 CustEquipID FROM tblCustEquip WHERE SvcDetailID = tblSvcOrderDetail.SvcDetailID)    
+    WHERE ((@SvcDetailID IS NOT NULL AND SvcDetailID = @SvcDetailID) OR (@SvcDetailID IS NULL AND SvcOrderID = @SvcOrderID)) AND (CustEquipID IS NULL) AND
+      (EXISTS(SELECT TOP 1 CustEquipID FROM tblCustEquip WHERE SvcDetailID = tblSvcOrderDetail.SvcDetailID))
+  END

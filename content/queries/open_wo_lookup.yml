@@ -1,0 +1,54 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      declare @p5 int
+      set @p5=62
+      exec sp_executesql N'DECLARE @DummySPID int
+      SET  @DummySPID = @P1
+      Declare @SessionID UNIQUEIDENTIFIER
+      SET @SessionID = @P2
+
+      SELECT @P3 = @@SPID',N'@P1 int,@P2 uniqueidentifier,@P3 int OUTPUT',61,'E6365DC9-730B-460C-9B57-49B1E40C1B28',@p5 output
+      select @p5
+      --This keeps coming to get the sessionID everytime
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      exec sp_executesql N'DECLARE @LoadBlobs bit
+      SET @LoadBlobs = @P1
+      SELECT 
+          DataViewLayoutID, DataViewName, DefaultLayout, UserID,
+          CASE WHEN @LoadBlobs = 1 THEN LayoutText WHEN ISNULL(@LoadBlobs, 0) = 0 THEN NULL END As LayoutText,
+          UserCreated, TimeCreated, UserModified,
+          TimeModified, RecordID
+        FROM
+          tblDataViewLayout
+      WHERE DataViewLayoutID=5',N'@P1 bit',1
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      declare @p3 int
+      set @p3=NULL
+      exec sp_executesql N'EXEC spGetSortedPage ''SELECT TOP 10000    SVCORDERID, CUSTID, CUSTSITEID, LOCATIONID, SVCDATEADDED, STATUS, ISINSTALL,
+                SVCAMOUNT, SVCAMTBILLED, RECORDID, SVCTYPEID, PROBLEMID, SHORTDESC,
+                CUSTPO, RESIDENTID, PRIORITY, SALESMANID, AGRMNTID,
+                SUBSTATUSID, DATEACTIVATED, CAMPAIGNID, SVCDATECOMPLETE, FORMANEMPID, PURREQUISITIONEMPID, DEFTECHID,
+                CF1, CF2, CF3, CF4, CF5, CF6, CF7, CF8, CF9, CF10, CF11, CF12, CF13, CF14, CF15,
+                CF16, CF17, CF18, CF19, CF20, CF21, CF22, CF23, CF24, CF25, CF26, CF27, CF28, CF29, CF30,
+                CUSTNAME, SITENAME, EQUIPNAME, EQUIPMODELNUM, EQUIPSERIALNUM, EQUIPMANUFACTURENAME, EQUIPLOCATION,
+                EQUIPCF1, EQUIPCF2, EQUIPCF3, EQUIPCF4, EQUIPCF5, ADDRESS2, ADDRESS3, CITY, STATE, POSTALCODE,
+                SITECONTACT, SITEEMAIL, SITEPHONE, DATEPROMISED, TIMEFROMPROMISED, TIMETOPROMISED,
+                FIRSTSCHEDSTARTTIME, FIRSTSCHEDULEID ,AGREEMENTNO ,CUSTOMERTERMS
+                
+      FROM         DBO.[VULOOKUPSVCORDER]
+      '', ''[vuLookupSvcOrder]'', ''SvcOrderID'', ''SvcOrderID ASC, SvcDateAdded DESC'', 10000, 0, ''Status IN (1, 2, 3, 4)'', @P1 OUTPUT',N'@P1 int OUTPUT',@p3 output
+      select @p3
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      exec sys.sp_describe_undeclared_parameters N'SET @P1 = CAST((SELECT (Count(*)) AS Value FROM [vuLookupSvcOrder] 
+      WHERE Status IN (1, 2, 3, 4)) AS nvarchar(4000))'

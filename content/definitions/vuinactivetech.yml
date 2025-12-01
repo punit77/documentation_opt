@@ -1,0 +1,23 @@
+name: "vuInActiveTech"
+definition: |
+  CREATE View [dbo].[vuInActiveTech]
+  AS
+  select tblemployee.EmpCallName as 'EmpName',
+    tblsvcordersched.ScheduleId,
+    tblsvcordersched.Status,
+    tblsvcordersched.SvcOrderID ,
+    tblemployee.EmployeeId as 'EmployeeID'
+  from tblSvcOrderSched outer apply  split(tblSvcOrderSched.TechList, ',')  as tblSvcOrderSchedTech
+  inner join tblemployee on tblsvcorderschedTech.Items=tblEmployee.EmployeeID 
+  where tblemployee.IsActive=0 and 
+  tblsvcordersched.Status>2 and TechList  like '%,%'
+  union
+  select tblemployee.EmpCallName as 'EmpName',
+    tblsvcordersched.ScheduleId,
+    tblsvcordersched.Status,
+    tblsvcordersched.SvcOrderID ,
+    tblemployee.EmployeeId as 'EmployeeID'
+  from tblSvcOrderSched --outer apply  split(tblSvcOrderSched.TechList, ',')  as tblSvcOrderSchedTech
+  inner join tblemployee on CAST(tblSvcOrderSched.TechList as varchar(10))=tblEmployee.EmployeeID 
+  where tblemployee.IsActive=0 and 
+  tblsvcordersched.Status>2 and TechList not like '%,%'

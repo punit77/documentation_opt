@@ -1,0 +1,173 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      declare @p6 int
+      set @p6=0
+      exec sp_executesql N'/*DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int
+
+      SET  @SvcOrderID =:SvcOrderID
+      SET  @Check =:Check
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0, @SvcIsValid output
+
+      Set :RecCount  =@SvcIsValid  */
+      DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int,@OpenedUserID int
+
+      SET  @SvcOrderID =@P1
+      SET  @Check =@P2
+      SET @OpenedUserID=@P3
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0,@OpenedUserID, @SvcIsValid output
+
+      Set @P4  =@SvcIsValid',N'@P1 int,@P2 int,@P3 nvarchar(4000),@P4 int OUTPUT',154491,1,N'1',@p6 output
+      select @p6
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      SELECT 
+          SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+          IsActive, dbo.GetRowStamp(RecordID) AS RecordID
+        FROM
+          dbo.tblSchedSubStatus
+
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      SELECT 
+        *
+      FROM
+        [vuSvcOrderEstJobStage]
+      WHERE ChangeStatus<>10  AND SvcOrderID=154491
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      SELECT
+        a.*, CAST((CASE WHEN ISNULL(a.GroupDetailID, 0) > 0 THEN 1 ELSE 0 END) AS bit) AS GroupSelect,
+      CAST((case when a.POSOItemsID is null then a.POSOItemsID else a.warehouseId end) as INT) PoReceipt,
+      (CASE WHEN ISNULL(a.GroupDetailID, 0) > 0 THEN b.InvoiceDesc2 ELSE '' END) as LineGroupDetail
+          ,(SELECT InvoiceList FROM [VuBilledOnInvoiceList]
+           WHERE  VuBilledOnInvoiceList.SvcDetailID = a.SvcDetailID and VuBilledOnInvoiceList.SvcOrderid= a.svcorderid) as InvoiceList
+            FROM
+        tblSvcOrderDetail a, (select SvcDetailID SvcDetailID1,InvoiceDesc InvoiceDesc2 from tblSvcOrderDetail) AS b 
+        where (case isnull(a.GroupDetailID,0) when 0 then a.SvcDetailID else a.GroupDetailID end) = b.SvcDetailID1 
+        AND (TransType <> 4  AND SvcOrderID=154491) order by a.SvcDetailID
+
+  - id: q5
+    title: "Query 5"
+    sql: |
+      SELECT     A.SvcDetailID, A.SvcOrderID, A.LineItemNum, A.InvoiceID, A.ScheduleID, A.QBGLAccountID,
+                A.TransType, A.TransTypeID, A.LineGroupID, A.InvoiceDesc, A.EntryDate,
+                A.Printable, A.UserCreated,
+                A.TimeCreated, A.UserModified, A.TimeModified, A.RecordID, A.BilledAmt,A.InvoiceList
+      FROM         dbo.[vuSvcOrderDetailNew] A
+      WHERE TransType=4  AND SvcOrderID=154491
+
+  - id: q6
+    title: "Query 6"
+    sql: |
+      SELECT 
+          *
+        FROM
+          tblSvcOrderProblems
+      WHERE SvcOrderID=154491
+
+  - id: q7
+    title: "Query 7"
+    sql: |
+      exec sp_executesql N'declare @svcorderNew VARCHAR(500)
+      SET @svcorderNew =@P1
+      select *  from [vuInactiveTech]
+      WHERE SVCorderid in (SELECT items FROM SPLIT(@svcorderNew, '','')) --CAST(SvcOrderID AS VARCHAR)IN (@svcorder)
+      --select EmpName,ScheduleID,Status,SvcOrderID,EmployeeID from [vuInactiveTech]',N'@P1 varchar(8000)','154491'
+
+  - id: q8
+    title: "Query 8"
+    sql: |
+      SELECT
+        *,
+        CAST(0 AS bit) AS Post, 0 AS ChargeCrewTechType, 0 AS ShowInvCrewTechType, CAST(0 AS bit) AS DefaultValuesSet,
+        (CASE WHEN ISNULL(tblFileLink.TransID, 0) = 0 THEN 'No Attachment' ELSE 'Show Attachment' END) AS Attached
+      FROM
+        tblSvcOrderSched
+        LEFT OUTER JOIN
+        [VwFileLinkSched] as tblFileLink ON dbo.tblSvcOrderSched.ScheduleID = tblFileLink.TransID
+      WHERE SvcOrderID=154491
+
+  - id: q9
+    title: "Query 9"
+    sql: |
+      SELECT 
+          SvcCostLinkID, SvcOrderID, TransID, IsActive, UserCreated, 
+          TimeCreated, UserModified, TimeModified, RecordID
+        FROM
+          tblSvcOrderCostLinks
+      WHERE SvcOrderID=154491
+
+  - id: q10
+    title: "Query 10"
+    sql: |
+      SELECT 
+        PurRequisitionID, SvcOrderID, EmployeeID, NeededByDate, 
+        Description, Status, UserCreated, TimeCreated, UserModified,
+        TimeModified, RecordID , ShipTo
+      FROM
+        tblSvcPurRequisition
+      WHERE SvcOrderID=154491
+
+  - id: q11
+    title: "Query 11"
+    sql: |
+      SELECT     tblSvcPurReqTemplate.ReqTemplatePartID, tblSvcPurReqTemplate.SvcOrderID, tblSvcPurReqTemplate.JobStageID, tblSvcPurReqTemplate.PartID,
+                      tblSvcPurReqTemplate.Description, tblSvcPurReqTemplate.UnitMeasureID, tblSvcPurReqTemplate.Quantity, tblSvcPurReqTemplate.ExtQuantity,
+                      tblSvcPurReqTemplate.UnitCost, tblSvcPurReqTemplate.ExtCost, tblSvcPurReqTemplate.UserCreated, tblSvcPurReqTemplate.TimeCreated,
+                      tblSvcPurReqTemplate.UserModified, tblSvcPurReqTemplate.TimeModified, tblSvcPurReqTemplate.RecordID, tblParts.MfgPartNumber
+      FROM         tblSvcPurReqTemplate LEFT OUTER JOIN
+                            tblParts ON tblSvcPurReqTemplate.PartID = tblParts.PartID
+      WHERE SvcOrderID=154491
+ 
+  - id: q12
+    title: "Query 12"
+    sql: |
+      SELECT 
+          ReqNotifyID, SvcOrderID, EmployeeID, RequiresApproval, 
+          UserCreated, TimeCreated, UserModified, TimeModified, 
+          RecordID
+        FROM
+          tblSvcPurReqNotify WHERE SvcOrderID=154491
+
+  - id: q13
+    title: "Query 13"
+    sql: |
+      SELECT     InvoiceID, TransType, TransID, InvDate, Note, SaleAmt, AmtPaid,
+           AmtDue, Void, DateDue
+      FROM         dbo.tblInvoice WHERE TransType=1  AND TransID=154491
+
+  - id: q14
+    title: "Query 14"
+    sql: |
+      SELECT
+        PortalNoteID, TransType, TransID, NoteText, UserType,
+        UserCreated,
+        TimeCreated, UserModified, TimeModified,
+        RecordID
+      FROM
+          tblPortalNotes
+      WHERE TransID=154491  AND TransType='tblSvcOrder'
+
+  - id: q15
+    title: "Query 15"
+    sql: |
+      SELECT 
+        NoteID, TransType, TransID, SubjectID, NoteDate, Subject, 
+        NoteText, NoteTypeID, UserCreated, TimeCreated, UserModified, TimeModified,
+        SystemNote, RecordID
+      FROM
+        tblNotes
+      WHERE TransType='tblSvcOrder'  AND TransID=154491

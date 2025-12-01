@@ -1,0 +1,19 @@
+name: "vuSvcOrderEstDetailsNew"
+definition: |
+  CREATE VIEW [dbo].[vuSvcOrderEstDetailsNew]
+  AS
+  SELECT     SvcEstDetailID, SvcOrderID, EstChangeID, TransType, JobStageID, LineItemNum, GLAcctSetID, QBGLAccountID, ResidentID, RateTableID, PayTypeID, PartMarkupID, 
+                        TechID, RepairCodeID, PartID, UnitMeasureID, PartLocationID, IsStockPart, IsFixedAmt, InvoiceDesc, LineGroupID, GroupDetailID, TempQty, Quantity, QtyProcessed, 
+                        QtyAllocate, WarehouseID, QtyUsed, UnitCost, UnitSaleAmt, UnitTaxAmt, Taxable, DiscountAmt, DiscountPct, LineSaleTotal, LineTaxTotal, LineCostTotal, Printable, 
+                        BilledAmt, PctDone, InvoiceID, IsKitHead, KitHeadID, PartKitDetailID, KitCalcOption, KitItemTaxTotal, KitItemSaleTotal, IsAdjustItem, UserCreated, TimeCreated, 
+                        UserModified, TimeModified, RecordID, CAST(ISNULL
+                            ((SELECT     Status
+                                FROM         dbo.tblSvcOrderEstChange
+                                WHERE     (EstChangeID = dbo.tblSvcOrderEst.EstChangeID)), 0) AS int) AS ChangeStatus, CF1, CF2, CF3, CF4, CF5, CategoryID, SubCategoryID, DimensionsType, 
+                        DimensionsX, DimensionsY, MultiplyQtyByKitQty,CustEquipIDAuto
+                        ,stuff((SELECT distinct ', ' + cast(T2.InvoiceID as varchar(10))
+            FROM tblInvoiceDetail t2
+            inner join tblInvoice c on c.InvoiceID=t2.InvoiceID
+            where t2.SvcDetailID = tblSvcOrderEst.SvcEstDetailID and t2.Svcorderid = tblSvcOrderEst.Svcorderid AND isnull(c.Void,0)<>1 and isnull(c.Cleared,0)<>1
+            FOR XML PATH('')),1,1,'')  as 'InvoiceList',CurrentCost,PartUserModified,PartTimeModified
+  FROM         dbo.tblSvcOrderEst

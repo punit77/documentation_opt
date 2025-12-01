@@ -1,0 +1,375 @@
+name: "spCreateInvoice"
+definition: |
+  CREATE PROCEDURE [dbo].[spCreateInvoice]
+  (
+    @PartialyBilling bit = 0,
+    @InvoiceType int,
+    @TransID int,
+    @UserName char(20),
+    @InvID int = 0,
+    -- Alexey
+    @ProgressPct float = 0,
+    @ProgressAmt money = 0,
+    --@ProgressAmt float = 0,
+    @TaxRate float = 0,
+    @InvoiceNote varchar(200),
+    @CustID int,
+    @InvoiceDate datetime
+    --
+  )
+  AS
+
+  SET NOCOUNT ON
+
+  IF @InvoiceType = 1
+  BEGIN
+    EXEC spCalcSvcOrderTax @TransID
+    EXEC spUpdateSvcHeader @TransID, 0
+  END
+
+  DECLARE 
+    @InvoiceID int,
+    @SvcStatus int,
+    @InvoiceTotal money,
+    @InvoiceTax money,
+    @TermID int,
+    @TermDays int,
+    @DayDue datetime,
+    @TaxGrpID int,
+    @SalesTax bit,
+    @StockCosts money,
+  -- Alexey 1195
+    @TaxAmount money,
+    --@TaxAmount float,
+    @CustomerID int,
+    @InvoiceDateVar datetime,
+  --
+  -- Alex Kop #1195 FeedBack
+    @PartOrder tinyint, 
+    @LaborOrder tinyint, 
+    @GroupOrder tinyint, 
+    @TransTypes varchar(20), 
+    @TransLen tinyint, 
+    @TransPos tinyint, 
+    @TransPosType tinyint
+
+  SET @PartOrder = 0
+  SET @LaborOrder = 0
+  SET @GroupOrder = 0
+  SET @TransTypes = (SELECT ISNULL(SvcServiceInvOrder, '') FROM tblCompanyPreference)
+  SET @TransLen = LEN(@TransTypes)
+  SET @TransPos = 0
+  WHILE @TransPos < @TransLen
+  BEGIN
+    SET @TransPos = @TransPos + 1
+    SET @TransPosType = CAST(SUBSTRING(@TransTypes, @TransPos, 1) as tinyint)
+
+    IF @TransPosType = 1
+      SET @PartOrder = @TransPos
+    ELSE IF @TransPosType = 2
+      SET @LaborOrder = @TransPos
+    ELSE IF @TransPosType = 4
+      SET @GroupOrder = @TransPos
+  END
+
+  --
+  -- Alex Kop #2609
+    SET @InvoiceDateVar = @InvoiceDate
+    IF ISNULL(@InvoiceDateVar, 0) = 0 AND @InvID = 0
+      SET @InvoiceDateVar = dbo.piGetDate(GETDATE())
+    ELSE IF ISNULL(@InvoiceDateVar, 0) = 0 AND @InvID > 0
+      SET @InvoiceDateVar = (SELECT InvDate FROM tblInvoice WHERE InvoiceID = @InvID)
+  -- #2609
+
+  SELECT @TaxAmount = ISNULL(@TaxRate, 0)
+
+  SELECT @SvcStatus = Status,  @SalesTax = SalesTax, @TaxGrpID = TaxGrpID FROM tblSvcOrder WHERE SvcOrderID = @TransID
+
+  IF ISNULL(@CustID, 0) = 0 
+    SET @CustomerID = ( SELECT CustID FROM tblSvcOrder WHERE SvcOrderID = @TransID )
+  ELSE
+    SET @CustomerID = @CustID
+
+  SET @TermID = (SELECT TermID FROM tblCustomer WHERE CustID = @CustomerID)
+  IF ISNULL(@TermID, 0) = 0
+    SET @TermID = (SELECT ARTermID FROM tblCompanyPreference)
+
+  SET @TermDays = ISNULL((SELECT DaysDue FROM tblTerm WHERE TermID = @TermID), 0)
+  SET @DayDue = DATEADD(Day, @TermDays, @InvoiceDateVar)
+
+  BEGIN TRY /** Condition by Paritosh **/
+  BEGIN TRANSACTION
+  -- new invoice
+  IF @InvID = 0
+  BEGIN
+  /*
+  -- Alex Kop #1208
+    IF ISNULL(@CustID, 0) = 0 
+      SET @CustomerID = ( SELECT CustID FROM tblSvcOrder WHERE SvcOrderID = @TransID )
+    ELSE
+      SET @CustomerID = @CustID
+  -- #1208
+
+    --SET @TermID = (SELECT TermID FROM tblCustomer WHERE CustID=(SELECT CustID FROM tblSvcOrder WHERE SvcOrderID = @TransID))
+    -- Alex Kop #4602
+    SET @TermID = (SELECT TermID FROM tblCustomer WHERE CustID = @CustomerID)
+    -- #4602
+    IF ISNULL(@TermID, 0) = 0
+      SET @TermID = (SELECT ARTermID FROM tblCompanyPreference)
+
+    SET @TermDays = ISNULL((SELECT DaysDue FROM tblTerm WHERE TermID = @TermID), 0)
+    --SET @DayDue = DATEADD(Day, @TermDays, GETDATE())
+    -- Alex Kop #2609
+    SET @DayDue = DATEADD(Day, @TermDays, @InvoiceDateVar)
+    -- #2609
+  */
+  --set @TransID=9999999999999999999999999
+    INSERT INTO tblInvoice (TransID, TransType, CustID, SiteID, LocationID, 
+      InvDate, IsInstall, CustPO, AmtPaid, SalesTax, TaxGrpID, Note, InvoiceNote, Printed, TermID, DateDue, UserCreated, TimeCreated) 
+    SELECT SvcOrderID, 1 AS TransType,/*CustID*/ @CustomerID, CustSiteID, LocationID, 
+      --GETDATE() AS InvDate, 0, 
+      -- Alex Kop #2609
+      @InvoiceDateVar AS InvDate, 0, 
+      -- #2609
+      CustPO, 0 AS AmtPaid, SalesTax, TaxGrpID, /* 'Work Order# ' + RTRIM(CAST(SvcOrderID AS CHAR(20))) */ 
+      --ShortDesc AS Note, 
+  -- Alexey 1195
+      case when (@PartialyBilling = 0) then ShortDesc else @InvoiceNote  end AS Note,
+  -- 
+      (SELECT CAST(InvoiceMsg AS VARCHAR(8000)) FROM tblCompanyPreference), 0, @TermID, @DayDue, @UserName, GETDATE() 
+    FROM tblSvcOrder     
+    WHERE SvcOrderID = @TransID
+
+    SET @InvoiceID = (SELECT @@IDENTITY)
+  END 
+
+  -- existing invoice
+  ELSE
+    SET @InvoiceID = @InvID
+
+  if @PartialyBilling = 0
+  begin
+    INSERT INTO tblInvoiceDetail
+        (InvoiceID, LineDate, Quantity, UnitSaleAmt, UnitTaxAmt, TripCharge, Taxable, DiscountAmt, ItemTotal, SvcOrderID, SvcDetailID, SvcLineItemNum, Description, LineType, QBGLAccountID,
+        UserCreated, TimeCreated, TransType)
+    SELECT InvoiceID, EntryDate, Quantity, UnitSaleAmt, case when Quantity = 0 then 0 else (LineTaxTotal/Quantity) end, TripCharge, Taxable, DiscountAmt, 
+        ToBill, SvcOrderID, SvcDetailID, LineItemNum, Description, TransType, QBGLAccountID, Expr2, Expr3, 3
+    FROM 
+    (SELECT @InvoiceID AS InvoiceID, EntryDate, 
+        (Quantity - ISNULL((SELECT SUM(ISNULL(Quantity,0)) 
+          FROM tblInvoiceDetail, tblInvoice 
+          WHERE tblInvoiceDetail.SvcDetailID = tblSvcOrderDetail.SvcDetailID 
+          AND tblInvoice.InvoiceID = tblInvoiceDetail.InvoiceID AND 
+          ISNULL(tblInvoice.Void, 0) = 0 AND tblInvoiceDetail.SvcOrderID = @TransID
+          AND tblInvoice.TransType = 1),0)) AS Quantity, 
+        UnitSaleAmt,LineTaxTotal,UnitTaxAmt,
+        (CASE TransType WHEN 1 THEN NULL WHEN 2 THEN (TripCharge*
+        (CASE WHEN ISNULL(LineSaleTotal, 0) = 0 THEN 1 ELSE (ISNULL(LineSaleTotal, 0) - ISNULL(LineTaxTotal, 0) - ISNULL(BilledAmt, 0)) END))/
+        (CASE WHEN ISNULL(LineSaleTotal, 0) = 0 THEN 1 ELSE (ISNULL(LineSaleTotal, 0) - ISNULL(LineTaxTotal, 0)) END) END) AS TripCharge, 
+        Taxable,
+        (DiscountAmt*
+        (CASE WHEN ISNULL(LineSaleTotal, 0) = 0 THEN 1 ELSE (ISNULL(LineSaleTotal, 0) - ISNULL(LineTaxTotal, 0) - ISNULL(BilledAmt, 0)) END))/
+        (CASE WHEN ISNULL(LineSaleTotal, 0) = 0 THEN 1 ELSE (ISNULL(LineSaleTotal, 0) - ISNULL(LineTaxTotal, 0)) END) AS DiscountAmt,
+        (ISNULL(LineSaleTotal, 0) - ISNULL(LineTaxTotal, 0) - ISNULL(BilledAmt, 0)) AS ToBill,
+        @TransID AS SvcOrderID, SvcDetailID, LineItemNum, InvoiceDesc AS Description,  TransType,
+        (CASE TransType
+          WHEN 1 THEN (SELECT QBIncGLAccountID FROM tblParts WHERE PartID = tblSvcOrderDetail.PartID) 
+          WHEN 2 THEN (
+            CASE (SELECT UseOvertimeMarkup2 FROM tblCompanyPreference)
+              WHEN 0 THEN (SELECT QBGLAccountID FROM tblRateTable WHERE RateTableID = tblSvcOrderDetail.RateTableID)
+              WHEN 1 THEN (
+                CASE LaborMarkupType
+                  WHEN 2 THEN (SELECT ISNULL(OvertimeGLAcctID, QBGLAccountID) FROM tblRateTable WHERE RateTableID = tblSvcOrderDetail.RateTableID)
+                  WHEN 3 THEN (SELECT ISNULL(WeekendGLAcctID, QBGLAccountID) FROM tblRateTable WHERE RateTableID = tblSvcOrderDetail.RateTableID)
+                  WHEN 4 THEN (SELECT ISNULL(HolidayGLAcctID, QBGLAccountID) FROM tblRateTable WHERE RateTableID = tblSvcOrderDetail.RateTableID)
+                  ELSE (SELECT QBGLAccountID FROM tblRateTable WHERE RateTableID = tblSvcOrderDetail.RateTableID)
+                END)
+            END)
+          WHEN 5 THEN (SELECT AgrmntGLAcctID FROM tblCompanyPreference)
+          ELSE NULL
+        END) AS QBGLAccountID,
+        @UserName AS Expr2, GETDATE() AS Expr3,
+              (CASE TransType WHEN 1 THEN @PartOrder WHEN 2 THEN @LaborOrder END) AS TransTypeOrder
+    FROM tblSvcOrderDetail
+    WHERE (SvcOrderID = @TransID AND Printable = 1) AND (TransType <> 4) AND (((ABS(ISNULL(LineSaleTotal, 0)) > 0) AND (ABS(ISNULL(LineSaleTotal, 0)) - ABS(ISNULL(LineTaxTotal, 0))) > ABS(ISNULL(BilledAmt, 0))) 
+        OR ((ISNULL(LineSaleTotal, 0) = 0) AND (BilledAmt IS NULL)))
+    UNION ALL SELECT @InvoiceID AS InvoiceID, EntryDate, 1, 
+
+          --UnitSaleAmt Begin
+          (CASE WHEN (SELECT SUM(ISNULL(B.LineSaleTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN
+          ((SELECT SUM(ISNULL(DiscountAmt,0)) FROM tblSvcOrderDetail WHERE GroupDetailID = A.SvcDetailID)*
+                  (CASE WHEN (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+            ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END))/
+                  (CASE WHEN (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+            ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END) - 
+          ((SELECT SUM(ISNULL(TripCharge,0)) FROM tblSvcOrderDetail WHERE GroupDetailID = A.SvcDetailID)*
+                  (CASE WHEN (SELECT SUM(ISNULL(B.LineSaleTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+              ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END))/
+                  (CASE WHEN (SELECT SUM(ISNULL(B.LineSaleTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+              ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END)
+            ELSE
+          (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END),
+          --UnitSaleAmt End
+          (SELECT SUM(ISNULL(B.LineTaxTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) LineTaxTotal,
+                  (SELECT SUM(ISNULL(B.LineTaxTotal, 0)) - 
+          (SELECT ISNULL(SUM(ISNULL(Quantity, 0)*ISNULL(UnitTaxAmt, 0)), 0) 
+            FROM tblInvoiceDetail, tblInvoice 
+            WHERE SvcDetailID = A.SvcDetailID 
+              AND tblInvoice.InvoiceID = tblInvoiceDetail.InvoiceID 
+              AND ISNULL(tblInvoice.Void, 0) = 0 AND tblInvoiceDetail.SvcOrderID = @TransID
+              AND tblInvoice.TransType = 1) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID), 
+              
+          --TripCharge Begin
+                  ((SELECT SUM(ISNULL(TripCharge,0)) FROM tblSvcOrderDetail WHERE GroupDetailID = A.SvcDetailID)*
+                  (CASE WHEN (SELECT SUM(ISNULL(B.LineSaleTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+              ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END))/
+                  (CASE WHEN (SELECT SUM(ISNULL(B.LineSaleTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+              ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END), 
+          --TripCharge End
+
+                  (CASE WHEN (SELECT COUNT(*) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID AND B.Taxable = 1) > 0 THEN 1 ELSE 0 END), 
+                
+          --Discount Begin
+          ((SELECT SUM(ISNULL(DiscountAmt,0)) FROM tblSvcOrderDetail WHERE GroupDetailID = A.SvcDetailID)*
+                  (CASE WHEN (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+              ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0))) - ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END))/
+                  (CASE WHEN (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 THEN 1 
+              ELSE (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) END), 
+          --Discount End
+
+                  (SELECT (SUM((ISNULL(B.LineSaleTotal, 0)-ISNULL(B.LineTaxTotal, 0)))-ISNULL(A.BilledAmt, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID), 
+                  @TransID AS SvcOrderID, SvcDetailID, LineItemNum, InvoiceDesc AS Description, 
+                  TransType, NULL AS QBGLAccountID, @UserName AS Expr2, GETDATE() AS Expr3,
+                  @GroupOrder AS TransTypeOrder
+    FROM tblSvcOrderDetail A
+    WHERE ((SvcOrderID = @TransID) AND (TransType = 4)
+    AND (((SELECT SUM(ABS(ISNULL(B.LineSaleTotal, 0))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) > 0 AND
+      (SELECT SUM((ABS(ISNULL(B.LineSaleTotal, 0))-ABS(ISNULL(B.LineTaxTotal, 0)))) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) > ABS(ISNULL(BilledAmt, 0)))
+      OR ((SELECT SUM(ISNULL(B.LineSaleTotal, 0)) FROM tblSvcOrderDetail B WHERE B.GroupDetailID = A.SvcDetailID) = 0 AND BilledAmt IS NULL)))
+    ) AS X
+    ORDER BY TransTypeOrder, LineItemNum
+
+  -- Alex Kop #1195 FeedBack
+    SET @TaxAmount = Round((SELECT (SUM(CAST(ISNULL(Quantity, 0)*ISNULL(UnitTaxAmt, 0) AS money))) AS InvoiceSum FROM tblInvoiceDetail WHERE InvoiceID = @InvoiceID), 2)
+    --SET @TaxAmount = ROUND(ROUND((SELECT (SUM(ISNULL(Quantity, 0)*ISNULL(UnitTaxAmt, 0))) AS InvoiceSum FROM tblInvoiceDetail WHERE InvoiceID = @InvoiceID), 3), 2)
+    
+  -- Alex Kop FeedBack 01/11/2013
+  --	DECLARE
+  --		@SaleAmtTmp float
+  --
+  --	SET @SaleAmtTmp = (SELECT (SUM(ISNULL(ItemTotal, 0))) AS InvoiceSum FROM tblInvoiceDetail WHERE InvoiceID = @InvoiceID)
+  --
+  --	EXEC spGetPartTaxAmt @TaxGrpID, 1, @SaleAmtTmp, @TaxAmount OUTPUT
+  --
+  --    SET @TaxAmount = ISNULL(@TaxAmount, 0)
+  -- FeedBack 01/11/2013
+
+    UPDATE tblSvcOrderDetail SET BilledAmt = (SELECT SUM(ItemTotal)	
+                          FROM tblInvoiceDetail, tblInvoice 
+                          WHERE SvcOrderID = @TransID 
+                            AND SvcDetailID = tblSvcOrderDetail.SvcDetailID  
+                            AND tblInvoice.InvoiceID = tblInvoiceDetail.InvoiceID 
+                            AND ISNULL(tblInvoice.Void, 0) = 0 
+                            AND tblInvoiceDetail.TransType = 3
+                            AND tblInvoice.TransType = 1)
+    WHERE SvcOrderID = @TransID
+
+    SET @ProgressPct = 1
+  -- #1195 FeedBack
+
+  end -- @PartialyBilling = 0
+
+  -- Alexey
+  UPDATE tblSvcOrder 
+  SET 
+    SvcAmtBilled = Round((ISNULL(SvcAmtBilled, 0) + @ProgressAmt), 2), 
+    --SvcAmtBilled = ROUND(Round((ISNULL(SvcAmtBilled, 0) + @ProgressAmt), 3), 2), 
+    PctComplete = @ProgressPct
+    -- Alexey 	 08-02-12
+    --SvcTaxAmount = (ISNULL(SvcTaxAmount, 0) + ISNULL(@TaxAmount, 0)) 
+  WHERE (SvcOrderID = @TransID)
+  ---
+
+  /* Update Svc Detail records with Inv ID */
+  UPDATE tblSvcOrderDetail SET InvoiceID = @InvoiceID WHERE SvcDetailID IN (SELECT SvcDetailID FROM tblInvoiceDetail WHERE InvoiceID = @InvoiceID) AND Printable=1
+
+  /* UPDATE Records associated with a group */
+  UPDATE tblSvcOrderDetail SET InvoiceID = @InvoiceID WHERE GroupDetailID IN (SELECT SvcDetailID FROM tblSvcOrderDetail WHERE TransType = 4 AND InvoiceID = @InvoiceID)
+
+  SET @StockCosts = (SELECT SUM(ISNULL(LineCostTotal, 0)) FROM tblSvcOrderDetail WHERE InvoiceID = @InvoiceID)
+
+  /* Update Inv Header */
+  --if @PartialyBilling = 1  
+  --begin
+    DECLARE
+      @SaleAmt money
+      --@SaleAmt float
+    --SET @TaxAmount = ROUND(ROUND(ISNULL(@TaxAmount, 0), 3), 2)
+    SET @SaleAmt = Round((SELECT (SUM(ISNULL(ItemTotal, 0))+@TaxAmount) AS InvoiceSum FROM tblInvoiceDetail WHERE InvoiceID = @InvoiceID), 2)
+    --SET @SaleAmt = ROUND(Round((SELECT (SUM(ISNULL(ItemTotal, 0))+@TaxAmount) AS InvoiceSum FROM tblInvoiceDetail WHERE InvoiceID = @InvoiceID), 3), 2)
+    SET @TaxAmount = Round(ISNULL(@TaxAmount, 0), 2)
+    
+    UPDATE tblInvoice 
+    SET 
+      SalesTax=@SalesTax, 
+      TaxGrpID = @TaxGrpID,  
+      SaleAmt = Round((@SaleAmt), 2), 
+      --SaleAmt = ROUND(Round((@SaleAmt), 3), 2), 
+      TaxAmt = @TaxAmount, 
+      AmtDue = Round((@SaleAmt), 2), 
+      --AmtDue = ROUND(Round((@SaleAmt), 3), 2), 
+      Cleared = (CASE WHEN @InvID > 0 THEN 0 ELSE Cleared END), 
+      IsInstall = 0,
+      StockCost = @StockCosts,
+      CustID = @CustomerID,
+      InvDate = @InvoiceDateVar,
+      DateDue = @DayDue,
+      TermID = @TermID
+    WHERE InvoiceID = @InvoiceID
+
+  /*
+  -- Alex Kop #4602 #4709
+    IF (ISNULL(@CustID, 0) <> 0) AND (@InvID <> 0) 
+    BEGIN
+
+      SET @TermID = (SELECT TermID FROM tblCustomer WHERE CustID = @CustID)
+      IF ISNULL(@TermID, 0) = 0
+        SET @TermID = (SELECT ARTermID FROM tblCompanyPreference)
+
+      SET @TermDays = ISNULL((SELECT DaysDue FROM tblTerm WHERE TermID = @TermID), 0)
+      SET @DayDue = DATEADD(Day, @TermDays, @InvoiceDateVar)
+
+      UPDATE tblInvoice 
+        SET CustID = @CustID,
+        DateDue = @DayDue,
+        TermID = @TermID
+      WHERE InvoiceID = @InvoiceID
+    END
+  -- #4602 #4709
+  */
+  EXEC spAddInvoiceTaxCodes @InvoiceID
+  --
+
+  EXECUTE spCloseSvcOrder @TransID, @UserName, @InvoiceID
+
+  EXECUTE spUpdateInvLineNum @InvoiceID
+
+  /* Update GL Accounts*/
+  EXECUTE spInvoiceGL @InvoiceID, @TransID, @UserName
+
+  -- Alex Kop #3 AC Terra
+  IF @PartialyBilling = 0
+    EXECUTE spApplyPmntsToInv @InvoiceID, @UserName
+  -- #3 AC Terra
+  COMMIT TRANSACTION
+  RETURN  @InvoiceID 
+  END TRY   /** Condition by Paritosh **/ 
+  BEGIN CATCH  
+        IF (@@TRANCOUNT > 0) 
+        BEGIN 
+                ROLLBACK TRANSACTION  
+          PRINT 'ROLLBACK TRANSACTION  '
+        END  
+        EXEC dbo.uspLogError_Inv
+      RETURN  NULL
+  END CATCH

@@ -1,0 +1,317 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblSvcOrder (
+      "CustID", "CustSiteID", "ResidentID", "LocationID", "CampaignID", "ReferredByCustID", "Status", "PrevStatus", "SubStatusID", 
+      "ShortDesc", "SvcTypeID", "IsInstall", "ProblemID", "ProblemDesc", "RateTableID", "PartMarkupID", "DefTechID", "EstHours", "Priority",
+       "MunicipalID", "AgrmntID", "ContactName", "AltContactID", "EstVersionNum", "EstimateText", "EstimateNote", "ShowItemPrice", "AdditionalAmt",
+        "SvcAmount", "EstimateTaxAmt", "SvcTaxAmount", "SvcAmtBilled", "JobBilledType", "RetainageHeld", "AdjustToAmt", "PctComplete", "OverheadPct",
+      "LbrOverheadPct", "SvcCost", "Instructions", "CustPO", "CustEquipID", "IsInspection", "SalesTax", "TaxGrpID", "EstPartCost", "EstLaborCost", 
+      "RetainagePct", "ActualPartCost", "NonStockPartCost", "ActualLaborCost", "DatePromised", "TimeFromPromised", "TimeToPromised", "BillableHours", 
+      "ActualHours", "SalesmanID", "SvcDateAdded", "SvcTimeAdded", "SvcUserAdded", "DateActivated", "FollowUp", "DatesOpen", "RecurrenceValue", "UseRecurrence",
+       "SvcDateComplete", "SvcUserComplete", "FormanEmpID", "PurRequisitionEmpID", "SvcRequestID", "CF1", "CF2",
+      "CF3", "CF4", "CF5", "CF6", "CF7", "CF8", "CF9", "CF10", "CF11", "CF12", "CF13", "CF14", "CF15", "CF16", "CF17", "CF18", "CF19", "CF20", "CF21", "CF22", "CF23",
+       "CF24", "CF25", "CF26", "CF27", "CF28", "CF29", "CF30", "UserCreated", "TimeCreated", "UserModified", "TimeModified", "CustEquipIDList", "CustEquipNameList", "AgreementNo")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, @P13, @P14, @P15, @P16, @P17, @P18, @P19, @P20, @P21, @P22, @P23, @P24, @P25, @P26, @P27, @P28, @P29, 
+      @P30, @P31, @P32, @P33, @P34, @P35, @P36, @P37, @P38, @P39, @P40, @P41, @P42, @P43, @P44, @P45, @P46, @P47, @P48, @P49, @P50, @P51, @P52, @P53, @P54, @P55, @P56, @P57, @P58, 
+      @P59, @P60, @P61, @P62, @P63, @P64, @P65, @P66, @P67, @P68, @P69, @P70, @P71, @P72, @P73, @P74, @P75, @P76, @P77, @P78, @P79, @P80, @P81, @P82, @P83, @P84, @P85, @P86, @P87, 
+      @P88, @P89, @P90, @P91, @P92, @P93, @P94, @P95, @P96, @P97, @P98, @P99, @P100, @P101, @P102, @P103, @P104, @P105, @P106, @P107)',N'@P1 int,@P2 int,@P3 int,@P4 int,@P5 int,@P6 
+      int,@P7 int,@P8 int,@P9 int,@P10 varchar(8000),@P11 int,@P12 bit,@P13 int,@P14 varchar(8000),@P15 int,@P16 int,@P17 int,@P18 float,@P19 int,@P20 varchar(8000),@P21 int,@P22 
+      varchar(8000),@P23 int,@P24 int,@P25 varchar(8000),@P26 varchar(8000),@P27 bit,@P28 money,@P29 money,@P30 money,@P31 money,@P32 money,@P33 int,@P34 money,@P35 money,
+      @P36 float,@P37 float,@P38 float,@P39 money,@P40 varchar(8000),@P41 varchar(8000),
+      @P42 int,@P43 bit,@P44 bit,@P45 int,@P46 money,@P47 money,@P48 float,@P49 money,@P50 money,@P51 money,@P52 datetime2(7),@P53 datetime2(7),@P54 datetime2(7)
+      ,@P55 float,@P56 float,@P57 int,@P58 datetime2(7),@P59 datetime2(7),@P60 int,@P61 datetime2(7),@P62 int,@P63 int,@P64 varchar(8000),@P65 bit,@P66 datetime2(7),
+      @P67 int,@P68 int,@P69 int,@P70 int,@P71 varchar(8000),@P72 varchar(8000),@P73 varchar(8000),@P74 varchar(8000),@P75 varchar(8000),@P76 varchar(8000),
+      @P77 varchar(8000),@P78 varchar(8000),@P79 varchar(8000),@P80 varchar(8000),@P81 varchar(8000),@P82 varchar(8000),@P83 varchar(8000),@P84 varchar(8000),
+      @P85 varchar(8000),@P86 varchar(8000),@P87 varchar(8000),@P88 varchar(8000),@P89 varchar(8000),@P90 varchar(8000),@P91 varchar(8000),@P92 varchar(8000),@P93 varchar(8000),
+      @P94 varchar(8000),@P95 varchar(8000),@P96 varchar(8000),@P97 varchar(8000),@P98 varchar(8000),@P99 varchar(8000),@P100 varchar(8000),@P101 varchar(8000),@P102 datetime2(7),
+      @P103 varchar(8000),@P104 datetime2(7),@P105 varchar(8000),@P106 varchar(8000),@P107 varchar(8000)',14004,18103,NULL,1,NULL,NULL,1,NULL,NULL,'DDG',1,0,NULL,NULL,1,1,NULL,NULL,NULL,
+      NULL,NULL,'Robert Molling',NULL,1,NULL,NULL,1,$0.0000,NULL,NULL,NULL,NULL,NULL,NULL,$0.0000,NULL,0,0,NULL,NULL,NULL,NULL,0,1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+      '2025-11-30 00:00:00','2025-11-30 18:10:59.1480000',1,NULL,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+      NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Admin','2025-11-30 18:24:25.1160000','-',NULL,'','',NULL
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      exec sp_executesql N'IF @P1 IS NOT NULL
+      BEGIN
+        -- if processed
+        IF @P2 IS NOT NULL
+        BEGIN
+          UPDATE tblSvcRequest
+          SET SvcOrderID = @P3, Status = 3
+          WHERE SvcRequestID = @P4
+        END
+        ELSE IF @P5 IS NOT NULL
+        BEGIN
+          UPDATE tblSvcRequest
+          SET Status = @P6
+          WHERE SvcRequestID = @P7
+        END
+      END',N'@P1 int,@P2 int,@P3 int,@P4 int,@P5 int,@P6 int,@P7 int',0,154491,154491,0,3,3,0
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      exec sp_executesql N'SELECT A.Qty,B.KitPriceType,B.PartMarkupId
+      FROM tblPartKitDetails A
+      inner join tblparts B ON A.PartID= B.PartId WHERE A.PartKitDetailID = @P1',N'@P1 int',NULL
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblSvcOrderDetail (
+      "SvcOrderID", "LineItemNum", "InvoiceID", "TransType", "TransTypeID", "ScheduleID", "GLAcctSetID", "QBGLAccountID",
+       "ResidentID", "AgrmntID", "RateTableID", "LaborMarkupType", "PartMarkupID", "TechID", "PayTypeID", "SvcProblemID",
+        "RepairCodeID", "RepairDesc", "PartID", "CustEquipIDCreated", "InvoiceDesc", "IsStockPart", "PartSerialized", "IsFixedAmt", 
+        "PartIDAction", "WarehouseID", "PartLocationID", "CustEquipID", "EntryDate", "SerialNum", "LineGroupID", "GroupDetailID",
+         "UnitMeasureID", "StartTime", "EndTime", "ActualLaborQty", "InitialChg", "Quantity", "TempQty", "InitialChgTime", "UnitCost", 
+         "UnitSaleAmt", "UnitTaxAmt", "InitialChgAmt", "TripCharge", "Taxable", "AdditionalCost", "AdditionalCostNote", 
+         "AgrmntDiscountType", "AgrmtItemID", "AgrmntDiscRate", "AgrmntChgID", "DiscountAmt", "DiscountPct", "LineSaleTotal",
+          "LineTaxTotal", "LineCostTotal", "IsKitHead", "KitHeadID", "PartKitDetailID", "KitCalcOption", "KitItemTaxTotal", 
+          "KitItemSaleTotal", "Printable", "QBID", "SyncByUserID", "Sync", "DontSync", "DontSyncReason", "CategoryID", "SubCategoryID",
+           "CF1", "CF2", "CF3", "CF4", "CF5", "UserCreated", "TimeCreated", "UserModified", "TimeModified", "DimensionsType",
+            "DimensionsX", "DimensionsY", "MultiplyQtyByKitQty", "POSOItemsID", "BilledAmt", "CustEquipIDAuto", "CurrentCost",
+             "PartUserModified", "PartTimeModified")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, @P13, @P14, @P15, @P16, @P17, @P18, @P19, @P20, @P21, 
+      @P22, @P23, @P24, @P25, @P26, @P27, @P28, @P29, 
+      @P30, @P31, @P32, @P33, @P34, @P35, @P36, @P37, @P38, @P39, @P40, @P41, @P42, @P43, @P44, @P45, @P46, @P47, @P48, @P49, @P50,
+       @P51, @P52, @P53, @P54, @P55, @P56, @P57, @P58, @P59, @P60, @P61, @P62, @P63, @P64, @P65, @P66, @P67, @P68, @P69, @P70, @P71, @P72, @P73, @P74, @P75, 
+       @P76, @P77, @P78, @P79, @P80, @P81, @P82, @P83, @P84, @P85, @P86, @P87, @P88, @P89, @P90)',N'@P1 int,@P2 int,@P3 int,@P4 int,@P5 int,@P6 int,@P7 int,@P8 int,@P9 int,
+       @P10 int,@P11 int,@P12 int,@P13 int,@P14 int,@P15 int,@P16 int,@P17 int,@P18 varchar(8000),@P19 int,@P20 int,@P21 varchar(8000),@P22 bit,@P23 bit,
+      @P24 bit,@P25 int,@P26 int,@P27 int,@P28 int,@P29 datetime2(7),@P30 int,@P31 int,@P32 int,@P33 int,@P34 datetime2(7),@P35 datetime2(7),@P36 float,@P37 bit,
+      @P38 float,@P39 float,@P40 float,@P41 money,@P42 money,@P43 money,@P44 money,@P45 money,@P46 bit,@P47 money,@P48 varchar(8000),@P49 smallint,@P50 int,@P51 float,
+      @P52 int,@P53 money,@P54 float,@P55 money,@P56 money,@P57 money,@P58 bit,@P59 int,@P60 int,@P61 int,@P62 money,@P63 money,@P64 bit,@P65 varchar(8000),@P66 int,@P67 bit,@P68 bit,
+      @P69 varchar(8000),@P70 int,@P71 int,@P72 varchar(8000),@P73 varchar(8000),@P74 varchar(8000),@P75 varchar(8000),@P76 varchar(8000),@P77 varchar(8000),@P78 datetime2(7),@P79 varchar(8000),@P80 datetime2(7),
+      @P81 int,@P82 float,@P83 float,@P84 bit,@P85 int,@P86 money,@P87 int,@P88 money,@P89 varchar(8000),@P90 datetime2(7)',154491,1,NULL,1,NULL,NULL,1,NULL,NULL,NULL,NULL,NULL,1,NULL,NULL,NULL,NULL,NULL,
+      26716,NULL,'Atosa Probe',1,0,0,1,1,NULL,NULL,'2025-11-30 00:00:00',NULL,NULL,0,1,NULL,NULL,NULL,NULL,1,1,NULL,$26.5200,$50.3900,$3.6533,NULL,$0.0000,1,NULL,NULL,NULL,NULL,NULL,NULL,$0.0000,NULL,$54.0400,
+      $3.6500,$26.5200,0,NULL,NULL,NULL,$0.0000,$0.0000,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Admin','2025-11-30 18:24:25.2570000',NULL,NULL,0,1,1,NULL,NULL,NULL,NULL,$26.5200,'ChristianO','2023-02-21 15:21:11.1470000'
+
+  - id: q5
+    title: "Query 5"
+    sql: |
+      exec sp_executesql N'/* Old Code, field is not used any more 
+      IF (:SerialNum IS NOT NULL)
+      BEGIN
+        UPDATE tblPartSerial SET TransType = 1, TransID = :SvcOrderID, TransID2 = @@IDENTITY, InStock = 0 WHERE (PartSerialID = :SerialNum)
+      END
+      */
+
+      IF (@P1 = 1) AND (@P2 = 1)
+      BEGIN
+        /* we have to convert teh qty first */
+        DECLARE @QtyToRomoveFromStock float
+        SET @QtyToRomoveFromStock = @P3 - (@P4 * 2)
+
+        EXEC [spUpdatePartStock] @P5, @P6, @QtyToRomoveFromStock
+
+      /*
+        IF NOT EXISTS (SELECT InventoryStockID FROM tblPartsStock WHERE PartID = :PartID AND WarehouseID = :WarehouseID)
+          INSERT INTO tblPartsStock (WarehouseID, PartID, QtyInStock, TimeCreated) VALUES (:WarehouseID, :PartID, 0, GETDATE())
+
+        UPDATE tblParts SET QtyInStock = (QtyInStock - :Quantity) WHERE PartID = :PartID
+        UPDATE tblPartsStock SET QtyInStock = (QtyInStock - :Quantity) WHERE (PartID = :PartID AND WarehouseID = :WarehouseID)
+      */
+      END
+
+      DECLARE @SvcConvertPartToEquipOnCreate bit
+      SET @SvcConvertPartToEquipOnCreate = (SELECT TOP 1 ISNULL(SvcConvertPartToEquipOnCreate, 0) FROM tblCompanyPreference)
+
+      /* Covert parts to Equipment 
+      IF @SvcConvertPartToEquipOnCreate = 1
+      BEGIN
+        EXEC [spConvertPartsToEquip] null, :SvcDetailID, :UserCreated
+      END
+      */',N'@P1 bit,@P2 int,@P3 float,@P4 float,@P5 int,@P6 int',1,1,1,1,26716,1
+
+  - id: q6
+    title: "Query 6"
+    sql: |
+      exec sp_executesql N'DECLARE
+      @POSOItemsID int,
+      @QtyUsed float,
+      @TransType int,
+      @TransID int,
+      @PartID int
+
+      SET @POSOItemsID = @P1
+      SET @QtyUsed = @P2
+
+      update
+            tblPOSOItems
+      set QtyUsed = QtyUsed + @QtyUsed
+      where POSOItemsID = @POSOItemsID
+
+      /*The task of next code is to correct values of OtyOnOrder and QtyOnStock for parts
+      which was ordered for stock and then attached to WO.*/
+
+      SELECT @TransType = tblPurchOrderDetail.ShipLocationType, @TransID = tblPurchOrderDetail.ShipLocationID,
+        @PartID = tblPurchOrderDetail.PartID
+      FROM tblPurchOrderDetail JOIN tblPOReceiptDetail ON tblPurchOrderDetail.PODetailID = tblPOReceiptDetail.PODetailID
+      JOIN tblPOSOItems ON tblPOReceiptDetail.RcptDetailID = tblPOSOItems.POReceiptDetailID
+      WHERE tblPOSOItems.POSOItemsID = @POSOItemsID
+
+      IF @TransType = 1
+        UPDATE tblPartsStock
+        SET QtyOnOrder = QtyOnOrder - @QtyUsed
+        WHERE WarehouseID = @TransID AND PartID = @PartID',N'@P1 int,@P2 float',0,1
+
+  - id: q7
+    title: "Query 7"
+    sql: |
+      exec sp_executesql N'EXEC [spCalcSvcOrderTax] @P1',N'@P1 int',154491
+
+  - id: q8
+    title: "Query 8"
+    sql: |
+      exec sp_executesql N'EXEC [spUpdateSvcHeader] @P1, 1',N'@P1 int',154491
+
+  - id: q9
+    title: "Query 9"
+    sql: |
+      SELECT CAST(SERVERPROPERTY('EDITION') AS VARCHAR(128)),      
+      CAST(SERVERPROPERTY('ENGINEEDITION') AS INT)
+
+  - id: q10
+    title: "Query 10"
+    sql: |
+      SELECT     PreferenceID, CompanyName, Address1, Address2, Address3, City, State,
+                Zip, CompanyURL, CompanyEmail, Phone, Fax, CompanyLogo,
+                PartStockGLAcctID, PartNonStockGLAcctID, PartAdjustGLAcctID, ARGLAcctID,
+                CashGLAcctID, SalesTaxGLAcctID, PartVarianceGLAcctID,
+                LaborVarianceGLAcctID, StockGLAcctSetID, NonStockGLAcctSetID, LaborGLAcctSetID,
+                ManualInvGLAcctID, POAccruralGLAcctID, POShippingGLAcctID, POTaxGLAcctID,
+                InvoiceMsg, EstimateMsg, AgrmntRpt,  ARTermID, SvcSaleLessThenCostMsg,
+                ShowEstItemPrice, ShowEstStages, JobTypeID, SvcRepairID,  SvcSelectActiveSingleAgrmnt,
+                SvcShowEquipWarranty,
+                ShowEstStagesDate, ShowCompanyLogo, StringProperCase, ShowCustPartAdv, ShowCustLaborAdv,
+                CreateAgrmntInvoiceDays, SvcPrintParts, SvcPrintLabor, AgrmntGLAcctID, PhoneNoFormat,
+                SpecialCustPriceMsg, SpecialCustPriceExpMsg, SvcOrdTypeID, InvMainWarehouseID,
+                InvDefQBAssetAcctID, InvDefQBIncomeAcctID, InvDefQBExpenseAcctID, DefDepositToAcctID, DefBankAcctID,
+                PurchaseTypeID, UseOvertimeMarkup2,
+                EmpCallTypeID, EmpOvertimePayTypeID, SvcOrdLowMrgMsg, SvcOrdPartsNotOnHand,
+                SvcDisplayHrsAsUnits, SvcRespectSchedLineNum, SvcLaborCostHourBasedOn, SvcUseCustCommentForInstruc,
+                CustRateTableID, SalesTaxGrpID, SvcSchedStartTime, SvcSchedEndTime, SchedSlotLayout,
+                EmpStartTime, EmpEndTime, HolidaysID, BackupFileName, BackupPath, LastBackup,
+                QBFilePath, QBAccounts, QBTermNames, QBEmployeeNames, QBVendorNames, QBEmpPayTypes,
+                QBExportType, QBTaxExportType, LockQBSync, LockQBSyncUser, QBUseExportDateAsTransDate, QBUseExpAcctOnPOStockItems,
+                InvoiceRpt, InstallInvRpt, DefTaxGroupID, CustomFields,
+                EstimateRpt, EstimateTechRpt, ServiceHistoryRpt, CreditMemoRpt, InvGrpRpt,
+                SvcOrderRpt, SvcOrderSigRpt, TechSchedSumRpt, StatementRpt, PurchaseOrderRpt, POQuoteRpt,
+                RequirePOApproval,  SchedImportFieldLinks,  QBIntlType, QBLinkExportedTransToCust, QBApplyPmntToInv,
+                QBExportItemsToQB, QBAddPSTPrefix, QBExportZeroAmtInv, QBExportPmntNote, RequiredFields,
+                CustomerJobOverview, UserCreated, InvCostValuation, ConfirmInvPaymentDlg,
+                PODontGenerateJournal, BackupReminder, BackupReminderDays, UpdateCostWVendorPricing,
+                SchedHolidayDays, SchedWorkDays, SchedLunchHours, SchedWeekendPeriod, SchedLunchHrsBillable, SchedSMSFormat,
+                SchedIncludeEstInOpenWO, SchedShowConflicts, SchedPromptSchedFromSameSite, SchedDefDurationMinutes, SchedSignatureTerms,
+                POWorksheetRpt, PurchPartDescJob, SvcAdjustPartID, SvcGrpByAgrmntWhenProcessing,
+                PurchPartDescService, EntitySvcS, EntitySvcP, EntityEstP, EntityEstS, EntityTechS,
+                EntityTechAb, EntityInvGrpS, EntityInvGrpP, FeatureEquip, FeatureResident, FeatureJournals, FeatureInventory, FeaturePortal,
+                EstPrintParts, EstPrintLabor, SvcServiceInvOrder, EstTransOrder,
+                EntityAgrmntS, EntityAgrmntP, EntityCampaignS, EntityCampaignP,
+                EntityPartsS, EntityPartsP, FeatureAgrmnt, FeatureCampaign, EntitySvcReqS, EntitySvcReqP, EntityForemanS,
+                SchedLaborShowInv, SchedLaborChargeType, SchedMaxEmpHours, FeaturePOReq, DefaultProcessPartAction,
+                POSCustID, POSSiteID, POSSvcTypeID, POSTermID, QBClassesNames, HideRestrictedActions, MiscCustSiteAdvancedSearch,
+                MiscAutoGeoCodeSites, MiscRoutingUnits, MiscAutoLoadLookups, MiscSetEmailedTransAsPrinted, MiscEquipComboFields,
+                MiscIgnoreCustomFieldDataTypes, MiscOverwriteCityByZipChange, MiscMaxAttachmentSize, MiscAttachFiles,
+                SOPromptExistingOpenSvcOrder, InvPromptToCreateVendorBill,
+                LastRefreshValue, PortalAccessRights, TimeCreated, UserModified, TimeModified, dbo.GetRowStamp(RecordID) AS RecordID,
+                POReceiveItemsDirectlyToSO, MicRoundUnitSaleAmts, MiscRptEmailBodyText, SvcConvertPartToEquipOnCreate, InvAllowDimensions,
+                QBLinkTransToSite, SvcAllowPartialBillingSvcCalls, EmailSearchSubjectPrefix, QBExportInvoiceNote, SvcProcessAgrmntsAsTodaysDate,
+                AREnableAgrmntDeposits, SOSendSORptToEquipOnBilledStatus, UpdateQtyToOrder ,EnablePartCostFromSvcOrderEst,AgreementScheduleAutoPO ,
+                ShowSlotLevelAttachAtWO , SecondOff ,RestrictCoverageEntryDate,MiscSetPDFTransAsPrinted,DefaultPoRNotification
+      FROM         dbo.tblCompanyPreference
+
+  - id: q11
+    title: "Query 11"
+    sql: |
+      Delete tblsvcorderdetail where svcorderid=0
+
+  - id: q12
+    title: "Query 12"
+    sql: |
+      SELECT Status,
+      SvcAmount,
+      SvcTaxAmount,
+      SvcAmtBilled,
+      RetainageHeld,
+      ActualPartCost,
+      NonStockPartCost,
+      ActualLaborCost,
+      ActualHours,
+      BillableHours,
+      RecordID,
+      EstHours,
+      EstPartCost,
+      EstLaborCost,
+      RetainagePct,
+      EstimateTaxAmt,
+      PctComplete,
+      JobBilledType,
+      SubStatusID
+      FROM tblSvcOrder WHERE SvcOrderID=154491
+
+  - id: q13
+    title: "Query 13"
+    sql: |
+      declare @p6 int
+      set @p6=0
+      exec sp_executesql N'/*DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int
+
+      SET  @SvcOrderID =:SvcOrderID
+      SET  @Check =:Check
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0, @SvcIsValid output
+
+      Set :RecCount  =@SvcIsValid  */
+      DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int,@OpenedUserID int
+
+      SET  @SvcOrderID =@P1
+      SET  @Check =@P2
+      SET @OpenedUserID=@P3
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0,@OpenedUserID, @SvcIsValid output
+
+      Set @P4  =@SvcIsValid',N'@P1 int,@P2 int,@P3 nvarchar(4000),@P4 int OUTPUT',154491,1,N'1',@p6 output
+      select @p6
+
+  - id: q14
+    title: "Query 14"
+    sql: |
+      exec sp_executesql N'DECLARE @LoadBlobs bit
+
+      SET @LoadBlobs = @P1
+
+      SELECT 
+          DataViewLayoutID, DataViewName, DefaultLayout, UserID,
+          CASE WHEN @LoadBlobs = 1 THEN LayoutText WHEN ISNULL(@LoadBlobs, 0) = 0 THEN NULL END As LayoutText,
+          UserCreated, TimeCreated, UserModified,
+          TimeModified, RecordID
+        FROM
+          tblDataViewLayout
+      WHERE DataViewLayoutID=399',N'@P1 bit',1
+
+  - id: q15
+    title: "Query 15"
+    sql: |
+      SELECT 
+        SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+        IsActive, dbo.GetRowStamp(RecordID) AS RecordID
+      FROM
+        dbo.tblSchedSubStatus
+
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+ 
+  - id: q16
+    title: "Query 16"
+    sql: |
+     SELECT 
+          *
+      FROM
+          tblSvcOrder
+      WHERE SvcOrderID=154491
+
+

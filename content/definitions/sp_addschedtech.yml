@@ -1,0 +1,15 @@
+name: "Sp_AddSchedTech"
+definition: |
+  CREATE Proc [dbo].[Sp_AddSchedTech](@ScheduleID int)
+  as
+  declare @CustId int
+  select @CustId = isnull(count(*),0) from tblSvcOrderSched inner join tblSvcOrder on tblSvcOrderSched.SvcOrderID=tblSvcOrder.SvcOrderID
+  inner join tblCustomerNotification on tblSvcOrder.CustID=tblCustomerNotification.Custid
+  where tblSvcOrderSched.scheduleid=@ScheduleID --and IsActive=0
+  if (@CustId<>0)
+  Begin
+    delete from tblSvcOrderSchedTech where scheduleid=@ScheduleID
+    insert into tblSvcOrderSchedTech (ScheduleID, EmployeeID, TimeCreated)
+    select tblSvcOrderSched.ScheduleID, Items,getdate() from tblSvcOrderSched outer apply  split(tblSvcOrderSched.TechList, ',')  as tblSvcOrderSchedTech
+    where tblSvcOrderSched.scheduleid=@ScheduleID
+  End

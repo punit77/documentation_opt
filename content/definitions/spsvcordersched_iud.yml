@@ -1,0 +1,412 @@
+name: "spSvcOrderSched_IUD"
+definition: |
+  CREATE proc [dbo].[spSvcOrderSched_IUD] (
+    @NewScheduleID varchar(100),
+    @OldScheduleID varchar(100),
+    @NewStartTime varchar(100),
+    @OldStartTime varchar(100),
+    @OldEndTime varchar(100),
+    @NewEndTIme varchar(100),
+    @OldStatus varchar(100),
+    @NewStatus varchar(100),
+    @OldUpdInactTech varchar(100),
+    @NewUpdInactTech varchar(100),
+    @NewSchedSubStatusID varchar(100),
+    @OldSchedSubStatusID varchar(100),
+    @NewSvcOrderID varchar(100),
+    @action char(1),
+    @OldSvcOrderID varchar(100),
+    @ModifyTech int, 
+    @OnOffFlag int)  
+  as
+  BEGIN
+    SET NOCOUNT ON; 
+    Declare @TotActions int;
+    Declare @CurAction int;
+    Declare @ActionID int;
+    Declare @TechID int;
+    Declare @IsAssigned Bit;
+    Declare @IsProgress Bit;
+    Declare @IsCompleted Bit;
+    Declare @IsTechChange Bit;
+    Declare @IsPosted Bit;
+    Declare @IsCanceled Bit;
+    Declare @IsTimeModified Bit;
+    Declare @IsStatusChange Bit;
+    Declare @TechList varchar(Max);
+    Declare @NewValue varchar(100);
+    Declare @OldValue varchar(100);
+    Declare @NotificationID int;
+    Declare @NotTechActionChange int;
+    Declare @CanCompPost int;
+    Declare @IsUnassigned int;
+    Declare @SubStatusOld int;
+    Declare @SubStatusNew int;
+    Declare @NeedToRes int;
+    Declare @NeedToResActions int;
+    Declare @IsAssignedOld int;
+    Declare @Frequency as char(1);
+    Declare @interval as int;
+    Declare @OldPosted as int;   /* Paritosh For issue where Alert is not generating for Posted after completing any slot */
+    Declare @LocationIdOld datetime;
+    Declare @LocationIDNew datetime;
+    Declare @Enroute int;  /*En route*/
+    Declare @EnrouteActions int; /*En route*/
+    Declare @IsEnroute int; /*En route*/
+    Declare @IsEnrouteStopExtra int; /*En route*/
+    /** New Notification Changes 14 Aug 2020***/
+    Declare @FullyCompleted int 
+    Declare @Incomplete int 
+    Declare @OnSiteChecked int 
+    Declare @OnSitequote int 
+    Declare @Submittingquote int 
+    Declare @Techenroute int 
+    Declare @WOUnassigned int 
+    Declare @FullyCompletedAct int 
+    Declare @IncompleteAct int 
+    Declare @OnSiteCheckedAct int 
+    Declare @OnSitequoteAct int 
+    Declare @SubmittingquoteAct int 
+    Declare @TechenrouteAct int 
+    Declare @WOUnassignedAct int 
+    Declare @UnassignedAct int --For Status UnAssign **
+    Declare @IsFullyCompleted int 
+    Declare @IsIncomplete int 
+    Declare @IsOnSiteChecked int 
+    Declare @IsOnSitequote int 
+    Declare @IsSubmittingquote int 
+    Declare @IsTechenroute int 
+    Declare @IsWOUnassigned int 
+    Declare @CheckCompPref int
+    Declare @ProcessNewSubStatus int
+    Declare @IsProcessStopExtra int;
+
+    SET @FullyCompleted=0
+    SET @Incomplete=0
+    SET @OnSiteChecked=0
+    SET @OnSitequote=0 
+    SET @Submittingquote=0
+    SET @Techenroute=0 
+    SET @WOUnassigned=0
+    SET @FullyCompletedAct=0
+    SET @IncompleteAct=0
+    SET @OnSiteCheckedAct=0
+    SET @OnSitequoteAct=0 
+    SET @SubmittingquoteAct=0
+    SET @TechenrouteAct=0 
+    SET @WOUnassignedAct=0
+    SET @UnassignedAct=0
+
+    SET @IsFullyCompleted=0
+    SET @IsIncomplete=0
+    SET @IsOnSiteChecked=0
+    SET @IsOnSitequote=0 
+    SET @IsSubmittingquote=0
+    SET @IsTechenroute=0 
+    SET @IsWOUnassigned=0
+    SET @CheckCompPref=ISNULL((select AddWOSubStatusToNotificationAlert from tblCompanyPreference),0)
+    SET @ProcessNewSubStatus=0
+    SET @IsProcessStopExtra=0
+    /** New Notification Changes 14 Aug 2020 Till Here ***/
+
+    /** Followup Changes on 30 Nov 2020 **/
+    Declare @Followup int;
+    Declare @FollowupAct int;
+    Declare @IsFollowup int;
+    SET @Followup=0;
+    SET @FollowupAct=0;
+    SET @IsFollowup=0;
+    /** Followup Changes on 30 Nov 2020 Till Here**/
+
+    SET @OldPosted = 0;
+    SET @IsAssigned = 0;
+    SET @IsProgress = 0;
+    SET @IsCompleted = 0;
+    SET @IsTechChange = 0;
+    SET @IsPosted = 0;
+    SET @IsCanceled = 0;
+    SET @IsTimeModified = 0;
+    SET @IsStatusChange = 0;
+    SET @NotTechActionChange = 0;
+    SET @CanCompPost = 0;
+    SET @IsUnassigned = 0;
+    SET @SubStatusOld = 0;
+    SET @SubStatusNew = 0;
+    SET @NeedToRes = 0;
+    SET @NeedToResActions = 0;
+    SET @IsAssignedOld = 0;
+    SET @Frequency = '';
+    SET @interval = 0;
+    SET @Enroute = 0;  /*En route*/
+    SET @EnrouteActions=0; /*En route*/
+    SET @IsEnroute=0; /*En route*/
+    SET @IsEnrouteStopExtra=0; /* En route*/
+    END
+
+    SET @NewStatus=isnull(@NewStatus,0);
+    SET @OldStatus=isnull(@OldStatus,0);
+    SET @OldUpdInactTech= isnull(@OldUpdInactTech,0)
+    SET @NewUpdInactTech= isnull(@NewUpdInactTech,0)
+
+    declare @CntTimMod as int
+    IF (@action<>'K')	
+    begin
+      SELECT @NeedToRes=SubStatusID from [dbo].[tblSchedSubStatus] where description='Need to Reschedule' and SchedStatusID=2
+      SELECT @Enroute=SubStatusID from [dbo].[tblSchedSubStatus] where description='En Route' and SchedStatusID=2 /*En route*/
+      /** New Notification Changes 14 Aug 2020***/
+      SET @FullyCompleted = ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='Fully Completed-Ready to Invoice' and SchedStatusID=4),0)
+      SET @Incomplete= ISNULL(( SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='Incomplete-Return Trip Required' and SchedStatusID=4),0)
+      SET @OnSiteChecked= ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='On Site-Checked in to IVR' and SchedStatusID=3),0)
+      SET @OnSitequote= ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='On Site quote approved, Work in Progress' and SchedStatusID=3),0)
+      SET @Submittingquote= ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='Submitting quote for additional repairs' and SchedStatusID=4),0)
+      SET @Techenroute= ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='Technician enroute' and SchedStatusID=3),0)
+      SET @WOUnassigned= ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='WO Unassigned' and SchedStatusID=3),0)
+
+      SET @FullyCompletedAct = ISNULL((SELECT ActionID from tblCustNotificationActionType where description='Fully Completed-Ready to Invoice' and IsActive=1),0)
+      SET @IncompleteAct= ISNULL(( SELECT ActionID from tblCustNotificationActionType where description='Incomplete-Return Trip Required' and IsActive=1),0)
+      SET @OnSiteCheckedAct= ISNULL((SELECT ActionID from tblCustNotificationActionType where description='On Site-Checked in to IVR' and IsActive=1),0)
+      SET @OnSitequoteAct= ISNULL((SELECT ActionID from tblCustNotificationActionType where description='On Site quote approved, Work in Progress' and IsActive=1),0)
+      SET @SubmittingquoteAct= ISNULL((SELECT ActionID from tblCustNotificationActionType where description='Submitting quote for additional repairs' and IsActive=1),0)
+      SET @TechenrouteAct= ISNULL((SELECT ActionID from tblCustNotificationActionType where description='Technician enroute' and IsActive=1),0)
+      SET @WOUnassignedAct= ISNULL((SELECT ActionID from tblCustNotificationActionType where description='WO Unassigned' and IsActive=1),0)
+      SET @UnassignedAct=ISNULL((SELECT ActionID from tblCustNotificationActionType where description='Unassigned' and IsActive=1),0)
+      /** New Notification Changes 14 Aug 2020 Till Here ***/
+
+      /** Followup Changes on 30 Nov 2020 **/
+      SET @IsFollowup=0;
+      SET @Followup = ISNULL((SELECT SubStatusID from [dbo].[tblSchedSubStatus] where description='Follow Up' and SchedStatusID=4),0)
+      SET @FollowupAct=ISNULL((SELECT ActionID from tblCustNotificationActionType where description='Follow Up' and IsActive=1),0)
+      /** Followup Changes on 30 Nov 2020 Till Here**/
+
+      SET @Enroute=isnull(@Enroute,0)	/*En route*/
+      set @NeedToRes=isnull(@NeedToRes,0)	
+      Declare @Techlist1 as Varchar(Max)
+      if (@action = 'U')
+      Begin
+        SET @IsTimeModified = (Case when (@NewStartTime <>@OldStartTime ) or (@NewEndTime <>@OldEndTime)  then 1 else 0 end)
+        SET @IsAssigned = (Case when @NewStatus <>@OldStatus and @NewStatus=2 then 1 else 0 end)
+        SET @IsProgress = (Case when @NewStatus <>@OldStatus and @NewStatus=3 then 1 else 0 end)
+        SET @IsCompleted = (Case when @NewStatus <>@OldStatus and @NewStatus=4 then 1 else 0 end)
+        SET @IsPosted = (Case when @NewStatus <>@OldStatus and @NewStatus=7 then 1 else 0 end)
+        SET @IsCanceled=(Case when @NewStatus <>@OldStatus and @NewStatus=5 then 1 else 0 end)
+        SET @IsStatusChange=(Case when @NewStatus <>@OldStatus then 1 else 0 end)
+        SET @IsUnassigned=(Case when @NewStatus=1 then 1 else 0 end)
+        SET @SubStatusOld=isnull(@OldSchedSubStatusID,0)
+        SET @SubStatusNew=isnull(@NewSchedSubStatusID,0)
+        SET @IsAssignedOld = (Case when @OldStatus=2 then 1 else 0 end)
+        SET @IsTechChange=(Case when @OldUpdInactTech<>@NewUpdInactTech and @OldUpdInactTech<>'0' then 1 else 0 end)
+        SET @IsEnroute=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=2 and isnull(@NewSchedSubStatusID,0)=@Enroute then 1 else 0 end) /*En route*/
+        select @IsTimeModified,@IsAssigned,@IsProgress,@IsCompleted,@IsPosted,@IsCanceled,@IsStatusChange,@IsUnassigned,@SubStatusOld,@SubStatusNew,@IsAssignedOld
+          select  @CanCompPost = (Case when @OldStatus in (4,5,7) then 1 else 0 end) 
+          select  @OldPosted = (Case when @OldStatus in (4) then 1 else 0 end)  /** Checking for Compeleted ***/
+        /** New Notification Changes 14 Aug 2020***/
+        SET @IsFullyCompleted=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@FullyCompleted then 1 else 0 end) 
+        SET @IsIncomplete=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@Incomplete then 1 else 0 end) 
+        SET @IsOnSiteChecked=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@OnSiteChecked then 1 else 0 end) 
+        SET @IsOnSitequote=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@OnSitequote then 1 else 0 end) 
+        SET @IsSubmittingquote=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@Submittingquote then 1 else 0 end) 
+        SET @IsTechenroute=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@Techenroute then 1 else 0 end) 
+        SET @IsWOUnassigned=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@WOUnassigned then 1 else 0 end) 
+        /** New Notification Changes 14 Aug 2020 Till Here ***/
+
+        SET @IsFollowup=(Case when isnull(@NewSchedSubStatusID,0) <>isnull(@OldSchedSubStatusID,0) and @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@Followup then 1 else 0 end) /** Followup Changes on 30 Nov 2020 **/
+    
+      End
+
+    if (@action = 'I')
+    Begin
+      SET @IsAssigned = (Case when @NewStatus=2 then 1 else 0 end)
+      SET @IsProgress = (Case when @NewStatus=3 then 1 else 0 end)
+      SET @IsCompleted = (Case when @NewStatus=4 then 1 else 0 end)
+      SET @IsPosted = (Case when @NewStatus=7 then 1 else 0 end)
+      SET @IsCanceled=(Case when @NewStatus=5 then 1 else 0 end)
+      SET @IsStatusChange=(Case when @NewStatus >1 then 1 else 0 end)
+      SET @IsUnassigned=(Case when @NewStatus=1 then 1 else 0 end)
+      SET @IsTechChange=0
+        SET @IsEnroute=(Case when @NewStatus=2 and isnull(@NewSchedSubStatusID,0)=@Enroute then 1 else 0 end) /*En route*/
+      /** New Notification Changes 14 Aug 2020***/
+        SET @IsFullyCompleted=(Case when @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@FullyCompleted then 1 else 0 end) /*En route*/
+        SET @IsIncomplete=(Case when @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@Incomplete then 1 else 0 end) /*En route*/
+        SET @IsOnSiteChecked=(Case when  @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@OnSiteChecked then 1 else 0 end) /*En route*/
+        SET @IsOnSitequote=(Case when  @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@OnSitequote then 1 else 0 end) /*En route*/
+        SET @IsSubmittingquote=(Case when @NewStatus=4 and isnull(@NewSchedSubStatusID,0)=@Submittingquote then 1 else 0 end) /*En route*/
+        SET @IsTechenroute=(Case when @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@Techenroute then 1 else 0 end) /*En route*/
+        SET @IsWOUnassigned=(Case when  @NewStatus=3 and isnull(@NewSchedSubStatusID,0)=@WOUnassigned then 1 else 0 end) /*En route*/
+        /** New Notification Changes 14 Aug 2020 Till Here ***/
+      SET @IsFollowup=(Case when isnull(@NewSchedSubStatusID,0)<>@Followup and @NewStatus=4 then 1 else 0 end) /** Followup Changes on 30 Nov 2020 **/
+    End
+
+      /** New Notification Changes 14 Aug 2020***/
+    if ((@CheckCompPref=1) and ((@FullyCompleted<>0 and @IsFullyCompleted=1) or (@Incomplete<>0 and @IsIncomplete=1) or (@OnSiteChecked<>0 and @IsOnSiteChecked=1) or (@OnSitequote<>0 and @IsOnSitequote=1) or (@Submittingquote<>0 and @IsSubmittingquote=1) or (@Techenroute<>0 and @IsTechenroute=1) or (@WOUnassigned<>0 and @IsWOUnassigned=1) or (@Followup<>0 and @IsFollowup=1)))
+      SET @ProcessNewSubStatus=1
+
+    SET @SubStatusOld=isnull(@SubStatusOld,0)
+    SET @SubStatusNew=isnull(@SubStatusNew,0)
+
+    If (@IsAssigned=0 and @IsTechChange=0 and @SubStatusOld<>@NeedToRes and @IsTimeModified=0)   /**and @IsTimeModified=0 this condition added on 26 Jan as Time change is not creating Befor/after mails****/
+      SET @IsEnrouteStopExtra=1;
+
+    --If (@ProcessNewSubStatus=1 and @IsAssigned=0 and @IsTechChange=0 and @SubStatusOld<>@NeedToRes ) 
+    If ( @IsAssigned=0 and @IsTechChange=0 and @SubStatusOld<>@NeedToRes and @IsTimeModified=0)   /**and @IsTimeModified=0 this condition added on 26 Jan as Time change is not creating Befor/after mails****/
+      SET @IsProcessStopExtra=1;
+
+    if(@action='D')
+    Begin
+      Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where a.SvcOrderId=@OldSvcOrderID and a.ScheduleID=@OldScheduleID and IsCompleted=0
+    End
+    
+    if (@action = 'U' or @action = 'I')
+      Begin
+      if (@IsUnassigned=1)     /*Case where Status changed To unAssigned*/
+        Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where  a.SvcOrderId=@NewSvcOrderID and a.ScheduleID=@NewScheduleID and IsCompleted=0 
+
+      /*Need to ReSchedule*/
+      If ( @IsCompleted = 1 or  @IsPosted = 1 or @IsCanceled = 1)
+      Begin
+        Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where a.SvcOrderId=@NewSvcOrderID and a.ScheduleID=@NewScheduleID and IsCompleted=0 
+      End
+
+      If (@SubStatusOld<>@SubStatusNew and @SubStatusNew=@NeedToRes) -----
+      Begin
+        Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where a.SvcOrderId=@NewSvcOrderID and a.ScheduleID=@NewScheduleID and @NewStatus=2 and IsCompleted=0      ---Added
+        Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+        Select top 1 tblSvcOrderSched.SvcOrderId, tblSvcOrderSched.ScheduleID, tblSvcOrder.CustId, tblSvcOrderSched.TechList,tblCustomerNotification.Emails,
+        tblCustomerNotification.ActionId, tblCustomerNotification.TemplateId,getdate(),getdate(),0,tblCustomerNotification.NotificationID,tblCustomer.Mobile, 0
+        from tblSvcOrderSched 
+        inner join tblSvcOrder on tblSvcOrderSched.SvcOrderID=tblSvcOrder.SvcOrderID 
+        inner join tblCustomerNotification on tblCustomerNotification.CustID=tblSvcOrder.CustID
+        inner join tblCustomer on  tblCustomerNotification.CustID=tblCustomer.CustID
+        
+        /* New Implementation for jobsite */
+        and ((tblSvcOrder.CustSiteID = tblCustomerNotification.JobSiteID) or (tblCustomerNotification.JobSiteID is null and tblSvcOrder.CustSiteID not in 
+        (select isnull(JobSiteID,0) from tblCustomerNotification as t where t.IsActive=1 and t.ActionID = tblCustomerNotification.ActionID and t.CustID = tblCustomerNotification.CustID ) ))
+        Where tblCustomerNotification.ActionId=0 and  @NewScheduleID =tblSvcOrderSched.ScheduleID
+        and tblCustomerNotification.IsActive=1 
+        --Return; 
+      END
+      Set @IsAssignedOld=isnull(@IsAssignedOld,0)
+      
+      /**Added this condition on 19 Jan as "Need to reschedule" alerts are not setting up to 1  */
+      if ((@SubStatusOld <> @SubStatusNew) and (@SubStatusOld = @NeedToRes) and (@NewStatus=2))
+          Begin
+              Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where a.SvcOrderId=@NewSvcOrderID and a.ScheduleID=@NewScheduleID
+      End
+      
+      if ((@SubStatusOld <> @SubStatusNew) and (@SubStatusOld = @NeedToRes) and (@IsProgress=1) and @IsAssignedOld>0)
+      Begin
+        Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where a.SvcOrderId=@NewSvcOrderID and a.ScheduleID=@NewScheduleID and @NewStatus=2 and IsCompleted=0 and a.SvcOrderId=@NewSvcOrderID
+        set @NeedToResActions= 1
+      End
+
+      if ((@SubStatusOld = @NeedToRes )  and (@IsTechChange=1 or @IsTimeModified=1) and @NeedToRes > 0)
+      begin
+        SET @IsTechChange=0
+        SET @IsTimeModified=0
+      end
+      if (@action = 'U' and @IsStatusChange=0 and @IsTechChange=0 and @IsTimeModified=0  and @IsEnroute=0  and  @ProcessNewSubStatus=0) /*@ProcessNewSubStatus=1 AutoNotif 15Aug */
+        Return;   /* Exit from trigger if nothing is there for storing*/
+      
+      Create table #TempAction 
+      (
+        id int identity(1,1), SvcOrderID	int, ScheduleID	int, CustId int, 
+        TechList text, Email varchar(100),ActionId int, TemplateId	int,
+        StartTime datetime, EndTime datetime, Interval int , InHour int,
+        NotificationID int, Mobile varchar(25),JobSiteID int,Frequency char(1)
+      )
+      
+      if (@IsTimeModified=1 or @IsTechChange=1 or @IsCanceled=1)    /*Updating old record before making changes */
+        Update tblNotificationList set IsCompleted=2 from tblNotificationList as a where a.SvcOrderId=@NewSvcOrderID and a.ScheduleID=@NewScheduleID and a.ActionId in (8,9,10,11) and IsCompleted=0 -- where a.ActionId in (1,2,3,4,5,6,7,8,9,10,11) and IsCompleted=0
+
+      Insert Into #TempAction
+      Select tblSvcOrderSched.SvcOrderId, tblSvcOrderSched.ScheduleID, tblSvcOrder.CustId, tblSvcOrderSched.TechList,
+      tblCustomer.Email,tblCustomerNotification.ActionId, tblCustomerNotification.TemplateId,
+      tblSvcOrderSched.StartTime, tblSvcOrderSched.EndTime,Isnull(Interval,0),
+      Case Frequency When 'H' Then 1 When 'D' Then 24 When 'W' Then '168' Else 0	End as InHour , tblCustomerNotification.NotificationID,tblCustomer.Mobile, tblCustomerNotification.JobSiteID,
+      tblCustomerNotification.Frequency
+      from tblSvcOrderSched 
+      inner join tblSvcOrder on tblSvcOrderSched.SvcOrderID=tblSvcOrder.SvcOrderID 
+      inner join tblCustomerNotification on tblCustomerNotification.CustID=tblSvcOrder.CustID
+      inner join tblCustomer on  tblCustomerNotification.CustID=tblCustomer.CustID
+      inner join (select * from tblSvcOrderSched where ScheduleID=@NewScheduleID)inserted on inserted.ScheduleID =tblSvcOrderSched.ScheduleID 
+      /* New Implementation for jobsite */
+      and ((tblSvcOrder.CustSiteID = tblCustomerNotification.JobSiteID) or (tblCustomerNotification.JobSiteID is null and tblSvcOrder.CustSiteID not in 
+      (select isnull(JobSiteID,0) from tblCustomerNotification as t where t.IsActive=1 and t.ActionID = tblCustomerNotification.ActionID and t.CustID = tblCustomerNotification.CustID ) ))
+      where tblCustomerNotification.IsActive=1 order by tblCustomerNotification.ActionId
+
+
+      Select  @TotActions =Count(*) from #TempAction
+      Set @CurAction=1 
+      While(@TotActions>=@CurAction)
+      BEGIN
+
+        Select @ActionID = ActionId from #TempAction where id=@CurAction
+        --if @ActionID=2
+        /***** This new Condition is for Alert not generating when changeing the status from Complete to posting *****/
+        If ( @ActionID=6 and @IsPosted=1 and @OldPosted = 1) --or (@ActionID>12) 
+          BEGIN
+              Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+              Select SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction where id=@CurAction
+          END	
+
+        /** New Notification Changes 14 Aug 2020***/
+        if (((@CheckCompPref=1) and ((@FullyCompleted<>0 and @IsFullyCompleted=1) or (@Incomplete<>0 and @IsIncomplete=1) or (@OnSiteChecked<>0 and @IsOnSiteChecked=1) or (@OnSitequote<>0 and @IsOnSitequote=1) or (@Submittingquote<>0 and @IsSubmittingquote=1) or (@Techenroute<>0 and @IsTechenroute=1) or (@WOUnassigned<>0 and @IsWOUnassigned=1) or (@IsUnassigned=1) or (@Followup<>0 and @IsFollowup=1)))) and @ActionID>12 
+          BEGIN
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@FullyCompleted  And ActionId=@FullyCompletedAct and @IsFullyCompleted=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@Incomplete  And ActionId=@IncompleteAct and @IsIncomplete=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@OnSiteChecked  And ActionId=@OnSiteCheckedAct and @IsOnSiteChecked=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@OnSitequote  And ActionId=@OnSitequoteAct and @IsOnSitequote=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@Submittingquote  And ActionId=@SubmittingquoteAct and @IsSubmittingquote=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@Techenroute  And ActionId=@TechenrouteAct and @IsTechenroute=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@WOUnassigned  And ActionId=@WOUnassignedAct and @IsWOUnassigned=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(SchedSubStatusID,0) =@Followup  And ActionId=@FollowupAct and @IsFollowup=1
+            Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)	Select #TempAction.SvcOrderID, #TempAction.ScheduleID, CustId, #TempAction.TechList, Email, ActionId, TemplateId, Getdate(),getdate(), 0,NotificationID,Mobile,0 from #TempAction inner join tblSvcOrderSched on #TempAction.ScheduleID=tblSvcOrderSched.ScheduleID   where id=@CurAction and isnull(Status,0) =1  And ActionId=@UnassignedAct
+          END		
+        /** Till here New Notification Changes 14 Aug 2020***/
+        
+        /* 1	Assigned,2	In-Progress,3	Completed,4	Time Modified,5	Technician Change,6	Posted,7	Canceled,8	Before Start Time,9	After Start Time,10	Before End Time,11	After End Time */
+        If (( @ActionID=1 and @IsAssigned=1 ) or ( @ActionID=2 and @IsProgress=1 ) or ( @ActionID=3 and @IsCompleted=1 )  or ( @ActionID=4 and @IsTimeModified=1 ) or ( @ActionID=5 and @IsTechChange=1 ) or ( @ActionID=6 and @IsPosted=1 ) or ( @ActionID=7 and @IsCanceled=1 ) or ( @ActionID=12 and @IsEnroute=1 ) ) and (@CanCompPost <> 1 ) --and (@ProcessNewSubStatus<>1) 	 /** New Notification Changes 14 Aug 2020***/
+          BEGIN
+              Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+              Select SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, Getdate(),dateadd(hh,InHour*Interval,getdate())  , 0,NotificationID,Mobile,0 from #TempAction where id=@CurAction
+          END	
+        if (@CanCompPost <> 1) and @IsUnassigned<>1  and (@IsEnrouteStopExtra=0) and (@IsProcessStopExtra=0) /*En Route*/-- New Cond on 03 Jul 
+          Begin
+            Select @ActionID=8,@NotificationID=NotificationID, @Frequency=Frequency,@interval=interval  from #TempAction where ActionId=8 and ( @IsAssigned=1 or @IsTimeModified=1 or @IsTechChange=1 or @NeedToResActions=1  or (@IsEnroute=1 and @SubStatusOld=@NeedToRes)) and (@IsCanceled=0)
+            if (@ActionID=8 and @NotificationID is not null)  /*** Check for Before Start Time ***/
+            begin  
+              Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+              Select SvcOrderId, ScheduleID, CustId, TechList, Email, 8, TemplateId, Getdate(), dateadd(hh,-1*InHour*Interval,StartTime) , 0,NotificationID,Mobile,0 from #TempAction where ActionId=8 and dateadd(hh,-1*InHour*Interval,StartTime) >=Getdate() and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+              Delete from #TempAction where ActionId=8 and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+            end
+
+            Select @ActionID=9,@NotificationID=NotificationID , @Frequency=Frequency,@interval=interval from #TempAction where ActionId=9 and ( (@IsAssigned=1 and @IsEnroute=0) or @IsTimeModified=1 or @IsTechChange=1 or @NeedToResActions=1 or @IsEnroute=1) and (@IsCanceled=0) 
+            if (@ActionID=9 and @NotificationID is not null)  /*** Check for After Start Time ***/
+            begin  
+              Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+              Select SvcOrderId, ScheduleID, CustId, TechList, Email, 9, TemplateId, Getdate(), dateadd(hh, InHour*Interval,StartTime) , 0,NotificationID,Mobile,0 from #TempAction where ActionId=9 and dateadd(hh, InHour*Interval,StartTime) >= Getdate() and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+              Delete from #TempAction where ActionId=9 and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+            end
+
+            Select @ActionID=10,@NotificationID=NotificationID , @Frequency=Frequency,@interval=interval from #TempAction where ActionId=10 and ( @IsAssigned=1 or @IsTimeModified=1 or @IsTechChange=1 or @NeedToResActions=1 or @IsEnroute=1) and (@IsCanceled=0)
+            if (@ActionID=10 and @NotificationID is not null)  /*** Check for Before End Time ***/
+            begin  
+              Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+              Select SvcOrderId, ScheduleID, CustId, TechList, Email, 10, TemplateId, Getdate(), dateadd(hh, -1*InHour*Interval,EndTime) , 0,NotificationID,Mobile,0 from #TempAction where ActionId=10 and dateadd(hh, -1*InHour*Interval,EndTime) >= Getdate() and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+              Delete from #TempAction where ActionId=10 and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+            end
+
+            Select @ActionID=11,@NotificationID=NotificationID , @Frequency=Frequency,@interval=interval from #TempAction where ActionId=11 and ( @IsAssigned=1 or @IsTimeModified=1 or @IsTechChange=1 or @NeedToResActions=1 or @IsEnroute=1) and (@IsCanceled=0) 
+            if (@ActionID=11 and @NotificationID is not null)  /*** Check for After END Time ***/
+            begin  
+              Insert into tblNotificationList (SvcOrderId, ScheduleID, CustId, TechList, Email, ActionId, TemplateId, TimeCreated, TimeTrigger, IsCompleted,NotificationID,Mobile,IsSMSSent)
+              Select SvcOrderId, ScheduleID, CustId, TechList, Email, 11, TemplateId, Getdate(), dateadd(hh, InHour*Interval,EndTime) , 0,NotificationID,Mobile,0 from #TempAction where ActionId=11 and dateadd(hh, InHour*Interval,EndTime) >= Getdate() and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+              Delete from #TempAction where ActionId=11 and isnull(Frequency,0)=isnull(@Frequency,0) and isnull(interval,0)=isnull(@interval,0)
+            end
+          --END
+          END --- Added New Condition
+
+        Set @CurAction=@CurAction+1
+
+      END
+      end
+    END

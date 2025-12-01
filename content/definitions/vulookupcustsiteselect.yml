@@ -1,0 +1,18 @@
+name: "vuLookupCustSiteSelect"
+definition: |
+  CREATE VIEW [dbo].[vuLookupCustSiteSelect]
+  AS
+  SELECT     TOP 100 PERCENT dbo.vuLookupCustSite.CustSiteID, dbo.vuLookupCustSite.SiteName, dbo.vuLookupCustSite.LocationID, 
+                        dbo.vuLookupCustSite.Contact, dbo.vuLookupCustSite.Address2, dbo.vuLookupCustSite.City, dbo.vuLookupCustSite.State, 
+                        dbo.vuLookupCustSite.PostalCode, dbo.vuLookupCustSite.Country, dbo.vuLookupCustSite.Phone, dbo.vuLookupCustSite.Fax, 
+                        dbo.vuLookupCustSite.Email, dbo.vuLookupCustSite.IsActive, dbo.vuLookupCustSite.RecordID, dbo.vuLookupCustSite.CF1, dbo.vuLookupCustSite.CF2, 
+                        dbo.vuLookupCustSite.CF3, dbo.vuLookupCustSite.CF4, dbo.vuLookupCustSite.CF5, dbo.vuLookupCustSite.CF6, dbo.vuLookupCustSite.CF7, 
+                        dbo.vuLookupCustSite.CF8, dbo.vuLookupCustSite.CF9, dbo.vuLookupCustSite.CF10, dbo.vuLookupCustSite.CF11, dbo.vuLookupCustSite.CF12, 
+                        dbo.vuLookupCustSite.CF13, dbo.vuLookupCustSite.CF14, dbo.vuLookupCustSite.CF15, dbo.vuLookupCustSite.CF16, dbo.vuLookupCustSite.CF17, 
+                        dbo.vuLookupCustSite.CF18, dbo.vuLookupCustSite.CF19, dbo.vuLookupCustSite.CF20, dbo.vuLookupCustSite.CF21, dbo.vuLookupCustSite.CF22, 
+                        dbo.vuLookupCustSite.CF23, dbo.vuLookupCustSite.CF24, dbo.vuLookupCustSite.CF25, dbo.vuLookupCustSite.CF26, dbo.vuLookupCustSite.CF27, 
+                        dbo.vuLookupCustSite.CF28, dbo.vuLookupCustSite.CF29, dbo.vuLookupCustSite.CF30, dbo.vuLookupCustSite.PrimaryCustID, 
+                        dbo.vuLookupCustSite.PrimaryCustName, dbo.vuLookupCustSite.SalesRepID, dbo.vuLookupCustSite.AltSiteID, dbo.tblCustSiteLink.CustID, 
+                        dbo.tblCustSiteLink.IsPrimary, dbo.tblCustSiteLink.CustSiteLinkID
+  FROM         dbo.vuLookupCustSite LEFT OUTER JOIN
+                        dbo.tblCustSiteLink ON dbo.vuLookupCustSite.CustSiteID = dbo.tblCustSiteLink.CustSiteID

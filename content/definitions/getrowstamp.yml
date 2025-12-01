@@ -1,0 +1,11 @@
+name: "GetRowStamp"
+definition: |
+  CREATE FUNCTION [dbo].[GetRowStamp]
+  (
+    @RowStamp varbinary(8)
+  )
+  RETURNS bigint
+  AS
+  BEGIN
+    RETURN CAST(@RowStamp AS bigint)
+  END

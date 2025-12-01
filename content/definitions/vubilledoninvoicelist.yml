@@ -1,0 +1,11 @@
+name: "VuBilledOnInvoiceList"
+definition: |
+  CREATE VIEW [dbo].[VuBilledOnInvoiceList]
+  as
+  SELECT distinct SvcDetailID, SvcorderId,
+    stuff((SELECT distinct ', ' + cast(t2.InvoiceID as varchar(10))
+            FROM tblInvoiceDetail t2
+            inner join tblInvoice c on c.InvoiceID=t2.InvoiceID AND isnull(c.Void,0)<>1 and isnull(c.Cleared,0)<>1
+            where t2.SvcDetailID = t1.SvcDetailID and t2.Svcorderid = t1.Svcorderid
+            FOR XML PATH('')),1,1,'')  as 'InvoiceList'
+  from tblInvoiceDetail t1 group by SvcDetailID,svcorderid

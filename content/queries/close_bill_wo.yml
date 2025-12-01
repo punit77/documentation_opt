@@ -1,0 +1,64 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      exec sp_executesql N'DECLARE @SvcOrderID int
+      SET @SvcOrderID = @P1
+      SELECT SvcOrderID
+      FROM tblSvcOrder
+      WHERE SvcOrderID = @SvcOrderID AND Status = 1
+      EXEC [spCloseSvcOrder] @SvcOrderID, @P2',N'@P1 int,@P2 varchar(20)',154491,NULL
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      declare @p4 varchar(8000)
+      set @p4=''
+      declare @p5 bit
+      set @p5=0
+      exec sp_executesql N'/*DECLARE
+        @Result int,
+        @Emails varchar(1000)
+
+      SET @Emails = ''''
+
+      SET @Result = (SELECT TOP 1 ISNULL(SOSendSORptToEquipOnBilledStatus , 0)FROM tblCompanyPreference)
+
+      if (SELECT TOP 1 ISNULL(SOSendSORptToEquipOnBilledStatus , 0)FROM tblCompanyPreference) <> 0
+      BEGIN
+        SET @Emails =  (SELECT TOP 1 Emails
+          FROM tblCustEquip JOIN tblSvcOrder ON tblSvcOrder.CustEquipID = tblCustEquip.CustEquipID
+          WHERE tblSvcOrder.SvcOrderID = :TransID AND tblSvcOrder.Status = 2)
+      END
+
+      SET :Emails = @Emails
+      SET :Result = @Result */
+
+      DECLARE
+          @Result INT,
+          @Emails varchar(1000),
+          @EquipIDList varchar(4000)
+
+      SET @Emails = ''''
+
+      SELECT 
+          @Result = ISNULL(SOSendSORptToEquipOnBilledStatus, 0) FROM tblCompanyPreference
+
+      IF @Result <> 0
+      BEGIN
+          SELECT  @EquipIDList = CustEquipIDList FROM tblSvcOrder WHERE SvcOrderID = @P1 AND Status = 2
+
+          SELECT 
+              @Emails = STUFF(
+                  (SELECT '','' + Emails
+                  FROM tblCustEquip 
+                  WHERE Emails IS NOT NULL 
+                  AND Emails <> '''' 
+                  AND CustEquipID IN (SELECT value FROM dbo.[Split_String](@EquipIDList, '',''))
+                  FOR XML PATH('''')), 1, 1, '''')
+      END
+
+      SET @P2 = @Emails
+      SET @P3 = @Result',N'@P1 int,@P2 varchar(8000) OUTPUT,@P3 bit OUTPUT',154491,@p4 output,@p5 output
+      select @p4, @p5
+

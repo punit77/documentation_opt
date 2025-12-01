@@ -1,0 +1,235 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      exec sp_executesql N'UPDATE tblSvcOrder SET 
+      "CustID"= @P1, 
+      "CustSiteID"= @P2, 
+      "ResidentID"= @P3, 
+      "LocationID"= @P4, 
+      "CampaignID"= @P5, 
+      "ReferredByCustID"= @P6, 
+      "Status"= @P7, 
+      "PrevStatus"= @P8, 
+      "SubStatusID"= @P9, 
+      "ShortDesc"= @P10, 
+      "SvcTypeID"= @P11, 
+      "IsInstall"= @P12, 
+      "ProblemID"= @P13, 
+      "ProblemDesc"= @P14, 
+      "RateTableID"= @P15, 
+      "PartMarkupID"= @P16, 
+      "DefTechID"= @P17, 
+      "EstHours"= @P18, 
+      "Priority"= @P19, 
+      "MunicipalID"= @P20, 
+      "AgrmntID"= @P21, 
+      "ContactName"= @P22, 
+      "AltContactID"= @P23, 
+      "EstVersionNum"= @P24, 
+      "EstimateText"= @P25, 
+      "EstimateNote"= @P26, 
+      "ShowItemPrice"= @P27, 
+      "AdditionalAmt"= @P28, 
+      "SvcAmount"= @P29, 
+      "EstimateTaxAmt"= @P30, 
+      "SvcTaxAmount"= @P31, 
+      "SvcAmtBilled"= @P32, 
+      "JobBilledType"= @P33, 
+      "RetainageHeld"= @P34, 
+      "AdjustToAmt"= @P35, 
+      "PctComplete"= @P36, 
+      "OverheadPct"= @P37, 
+      "LbrOverheadPct"= @P38, 
+      "SvcCost"= @P39, 
+      "Instructions"= @P40, 
+      "CustPO"= @P41, 
+      "CustEquipID"= @P42, 
+      "IsInspection"= @P43, 
+      "SalesTax"= @P44, 
+      "TaxGrpID"= @P45, 
+      "EstPartCost"= @P46, 
+      "EstLaborCost"= @P47, 
+      "RetainagePct"= @P48, 
+      "ActualPartCost"= @P49, 
+      "NonStockPartCost"= @P50, 
+      "ActualLaborCost"= @P51, 
+      "DatePromised"= @P52, 
+      "TimeFromPromised"= @P53, 
+      "TimeToPromised"= @P54, 
+      "BillableHours"= @P55, 
+      "ActualHours"= @P56, 
+      "SalesmanID"= @P57, 
+      "SvcDateAdded"= @P58, 
+      "SvcTimeAdded"= @P59, 
+      "SvcUserAdded"= @P60, 
+      "DateActivated"= @P61, 
+      "FollowUp"= @P62, 
+      "DatesOpen"= @P63, 
+      "RecurrenceValue"= @P64, 
+      "UseRecurrence"= @P65, 
+      "SvcDateComplete"= @P66, 
+      "SvcUserComplete"= @P67, 
+      "FormanEmpID"= @P68, 
+      "PurRequisitionEmpID"= @P69, 
+      "SvcRequestID"= @P70, 
+      "CF1"= @P71, 
+      "CF2"= @P72, 
+      "CF3"= @P73, 
+      "CF4"= @P74, 
+      "CF5"= @P75, 
+      "CF6"= @P76, 
+      "CF7"= @P77, 
+      "CF8"= @P78, 
+      "CF9"= @P79, 
+      "CF10"= @P80, 
+      "CF11"= @P81, 
+      "CF12"= @P82, 
+      "CF13"= @P83, 
+      "CF14"= @P84, 
+      "CF15"= @P85, 
+      "CF16"= @P86, 
+      "CF17"= @P87, 
+      "CF18"= @P88, 
+      "CF19"= @P89, 
+      "CF20"= @P90, 
+      "CF21"= @P91, 
+      "CF22"= @P92, 
+      "CF23"= @P93, 
+      "CF24"= @P94, 
+      "CF25"= @P95, 
+      "CF26"= @P96, 
+      "CF27"= @P97, 
+      "CF28"= @P98, 
+      "CF29"= @P99, 
+      "CF30"= @P100, 
+      "UserCreated"= @P101, 
+      "TimeCreated"= @P102, 
+      "UserModified"= @P103, 
+      "TimeModified"= @P104, 
+      "CustEquipIDList"= @P105, 
+      "CustEquipNameList"= @P106, 
+      "AgreementNo"= @P107
+      WHERE 
+      ("SvcOrderID"=@P108) AND 
+      (("RecordID"=@P109) OR (@P110 IS NULL AND "RecordID" IS NULL))',N'@P1 int,@P2 int,@P3 int,@P4 int,@P5 int,@P6 int,@P7 int,@P8 int,@P9 int,@P10 varchar(8000),@P11 int,@P12 
+      bit,@P13 int,@P14 varchar(8000),@P15 int,@P16 int,@P17 int,@P18 float,@P19 int,@P20 varchar(8000),@P21 int,@P22 varchar(8000),@P23 int,@P24 int,@P25 varchar(8000),@P26 
+      varchar(8000),@P27 bit,@P28 money,@P29 money,@P30 money,@P31 money,@P32 money,@P33 int,@P34 money,@P35 money,@P36 float,@P37 float,@P38 float,@P39 money,@P40 varchar(8000),
+      @P41 varchar(8000),@P42 int,@P43 bit,@P44 bit,@P45 int,@P46 money,@P47 money,@P48 float,@P49 money,@P50 money,@P51 money,@P52 datetime2(7),@P53 datetime2(7),@P54 datetime2(7)
+      ,@P55 float,@P56 float,@P57 int,@P58 datetime2(7),@P59 datetime2(7),@P60 int,@P61 datetime2(7),@P62 int,@P63 int,@P64 varchar(8000),@P65 bit,@P66 datetime2(7),@P67 int,@P68 int,
+      @P69 int,@P70 int,@P71 varchar(8000),@P72 varchar(8000),@P73 varchar(8000),@P74 varchar(8000),@P75 varchar(8000),@P76 varchar(8000),@P77 varchar(8000),@P78 varchar(8000),
+      @P79 varchar(8000),@P80 varchar(8000),@P81 varchar(8000),@P82 varchar(8000),@P83 varchar(8000),@P84 varchar(8000),@P85 varchar(8000),@P86 varchar(8000),
+      @P87 varchar(8000),@P88 varchar(8000),@P89 varchar(8000),@P90 varchar(8000),@P91 varchar(8000),@P92 varchar(8000),@P93 varchar(8000),@P94 varchar(8000),@P95 varchar(8000),
+      @P96 varchar(8000),@P97 varchar(8000),@P98 varchar(8000),@P99 varchar(8000),@P100 varchar(8000),@P101 varchar(8000),@P102 datetime2(7),@P103 varchar(8000),@P104 datetime2(7),
+      @P105 varchar(8000),@P106 varchar(8000),@P107 varchar(8000),@P108 int,@P109 varbinary(8000),@P110 varbinary(8000)',14004,18103,NULL,1,NULL,NULL,1,NULL,NULL,'DDG',1,0,NULL,NULL,
+      1,1,NULL,NULL,NULL,NULL,NULL,'Robert Molling',NULL,1,NULL,NULL,1,$0.0000,$54.0400,NULL,$3.6500,NULL,NULL,NULL,$0.0000,NULL,0,0,NULL,NULL,NULL,NULL,0,1,1,NULL,NULL,NULL,$26.5200,
+      $0.0000,$0.0000,NULL,NULL,NULL,NULL,NULL,NULL,'2025-11-30 00:00:00','2025-11-30 18:10:59.1470000',1,NULL,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+      NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Admin','2025-11-30 18:24:25.1170000'
+      ,'Admin','2025-11-30 19:20:12.9600000','','',NULL,154491,0x00000000134D6A38,0x00000000134D6A38
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      exec sp_executesql N'IF @P1 IS NOT NULL
+      BEGIN
+        -- if processed
+        IF @P2 IS NOT NULL
+        BEGIN
+          UPDATE tblSvcRequest
+          SET SvcOrderID = @P3, Status = 3
+          WHERE SvcRequestID = @P4
+        END
+        ELSE IF @P5 IS NOT NULL
+        BEGIN
+          UPDATE tblSvcRequest
+          SET Status = @P6
+          WHERE SvcRequestID = @P7
+        END
+      END',N'@P1 int,@P2 int,@P3 int,@P4 int,@P5 int,@P6 int,@P7 int',0,154491,154491,0,3,3,0
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblNotes (
+      "TransType", "TransID", "SubjectID", "NoteDate", "Subject", "NoteText", "NoteTypeID", "UserCreated", 
+      "TimeCreated", "UserModified", "TimeModified", "SystemNote")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12)',
+      N'@P1 varchar(8000),@P2 int,@P3 int,@P4 datetime2(7),@P5 varchar(8000),@P6 varchar(8000),@P7 int,
+      @P8 varchar(8000),@P9 datetime2(7),@P10 varchar(8000),@P11 datetime2(7),@P12 bit','tblSvcOrder',
+      154491,NULL,'2025-11-01 00:00:00','New',NULL,NULL,'Admin','2025-11-30 19:20:13.0070000',NULL,NULL,0
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      exec sp_executesql N'INSERT INTO tblSvcOrderProblems (
+      "SvcOrderID", "DateReported", "ProblemID", "ProblemDesc", 
+      "EstRepairTime", "CustEquipID", "ResidentID", "PriorityID", "UserCreated", "TimeCreated",
+       "UserModified", "TimeModified", "CustEquipIDList", "CustEquipNameList")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9,
+      @P10, @P11, @P12, @P13, @P14)',N'@P1 int,@P2 datetime2(7),
+      @P3 int,@P4 varchar(8000),@P5 float,@P6 int,@P7 int,@P8 int,@P9 varchar(8000),@P10 datetime2(7),
+      @P11 varchar(8000),@P12 datetime2(7),@P13 varchar(8000),@P14 varchar(8000)'
+      ,154491,'2025-11-30 00:00:00',11,'Carts are removed Wednesday night. 
+       Please do maintenance on Thursday mornings. ',NULL,NULL,NULL,NULL,'Admin'
+       ,'2025-11-30 19:20:13.0230000',NULL,NULL,'',''
+
+  - id: q5
+    title: "Query 5"
+    sql: |
+      exec sp_executesql N'EXEC [spCalcSvcOrderTax] @P1',N'@P1 int',154491
+
+  - id: q6
+    title: "Query 6"
+    sql: |
+      exec sp_executesql N'EXEC [spUpdateSvcHeader] @P1, 1',N'@P1 int',154491
+
+  - id: q7
+    title: "Query 7"
+    sql: |
+      SELECT Status,
+      SvcAmount,
+      SvcTaxAmount,
+      SvcAmtBilled,
+      RetainageHeld,
+      ActualPartCost,
+      NonStockPartCost,
+      ActualLaborCost,
+      ActualHours,
+      BillableHours,
+      RecordID,
+      EstHours,
+      EstPartCost,
+      EstLaborCost,
+      RetainagePct,
+      EstimateTaxAmt,
+      PctComplete,
+      JobBilledType,
+      SubStatusID
+      FROM tblSvcOrder WHERE SvcOrderID=154491
+
+
+  - id: q8
+    title: "Query 8"
+    sql: |
+      declare @p6 int
+      set @p6=0
+      exec sp_executesql N'/*DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int
+
+      SET  @SvcOrderID =:SvcOrderID
+      SET  @Check =:Check
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0, @SvcIsValid output
+
+      Set :RecCount  =@SvcIsValid  */
+      DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int,@OpenedUserID int
+
+      SET  @SvcOrderID =@P1
+      SET  @Check =@P2
+      SET @OpenedUserID=@P3
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0,@OpenedUserID, @SvcIsValid output
+
+      Set @P4  =@SvcIsValid',N'@P1 int,@P2 int,@P3 nvarchar(4000),@P4 int OUTPUT',154491,2,N'1',@p6 output
+      select @p6

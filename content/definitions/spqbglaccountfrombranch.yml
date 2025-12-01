@@ -1,0 +1,56 @@
+name: "spQBGLAccountFromBranch"
+definition: |
+  CREATE proc [dbo].[spQBGLAccountFromBranch] (@POID int, @OnOffFlag int) 
+  as
+  BEGIN
+    SET NOCOUNT ON; 
+    DECLARE @Update bit;
+    DECLARE @LocationId int;
+    DECLARE @QBChangeCount int;
+    DECLARE @QBUseExpAcctOnPOStockItems int;
+    SELECT @QBUseExpAcctOnPOStockItems=isnull(QBUseExpAcctOnPOStockItems,0)	 from tblCompanyPreference
+
+    if (select isnull(QBGLAccountFromBranch,0)QBGLAccountFromBranch from tblCompanyPreference)=0 
+      RETURN
+
+    SELECT @LocationId = LocationId from tblPurchOrder where POID = @POID 
+    
+    select @QBChangeCount = count(*) from tblPurchOrderDetail pd inner join tblParts p on p.PartID=pd.PartID 
+    where pd.POID = @POID
+    and pd.QBGLAccountID <> (case when p.ItemType=1 and @QBUseExpAcctOnPOStockItems= 0 then p.QBAssetGLAccountID else p.QBExpGLAccountID end)
+
+    if @OnOffFlag = 1  --Case when No any QBAccountID is updated manually in PODetail
+    BEGIN
+      SET @Update = 1
+    END
+    else if @OnOffFlag = 2	--Case when QBAccountID is updated manually.
+    BEGIN
+      SET @Update = 0
+    END
+    ELSE if @OnOffFlag = 3 -- Case of Insert  --Check If QBGLAccountID is different that the AccountId for part. if yes then don't update else update
+    BEGIN
+      --SET @Update = case when @QBChangeCount=0 then 1 else 0 end
+      SET @Update = 1
+    END
+
+
+    IF ISNULL(@Update,1)=1
+    BEGIN	
+      Update tblPurchOrderDetail SET QBGLAccountID = 
+      (	
+        case when (tbllocation.QBExpGLAccountID is not null and ItemType=2)  or  (tbllocation.QBExpGLAccountID is not null and @QBUseExpAcctOnPOStockItems= 1) 
+            then	tbllocation.QBExpGLAccountID 
+        Else 
+          (
+            SELECT case when ItemType=2 then tblParts.QBexpGLAccountID
+            when ItemType=1 and @QBUseExpAcctOnPOStockItems= 0 then QBAssetGLAccountID
+            else tblParts.QBexpGLAccountID end 
+          )
+        END 
+      )
+      FROM tblPurchOrder left outer Join	 tbllocation on tblPurchOrder.LocationID=tbllocation.LocationID 
+      inner join tblPurchOrderDetail on tblPurchOrder.POID=tblPurchOrderDetail.POID 
+      inner join tblParts on tblParts.PartID = tblPurchOrderDetail.PartID
+      Where tblPurchOrder.POID=@POID
+    END
+  END

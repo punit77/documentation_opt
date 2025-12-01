@@ -1,0 +1,21 @@
+name: "GetCustTotal"
+definition: |
+  CREATE FUNCTION [dbo].[GetCustTotal]
+  (
+    @CustID int,
+    @CurDate datetime,
+    @days int = 0
+  )
+  RETURNS money
+  AS
+  BEGIN
+
+    DECLARE @CustTotal money
+
+    IF @days IN (31,61,91,121,151,181)
+      SET @CustTotal = dbo.GetCustTotalEx(@CustID, @CurDate, @days, 30, 1)
+    ELSE
+      SET @CustTotal = dbo.GetCustTotalEx(@CustID, @CurDate, @days, 30, 0)
+    RETURN @CustTotal
+
+  END

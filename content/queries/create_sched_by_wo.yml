@@ -1,0 +1,348 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      SELECT 
+        SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+        IsActive, dbo.GetRowStamp(RecordID) AS RecordID
+      FROM
+        dbo.tblSchedSubStatus
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+
+  - id: q2
+    title: "Query 2 (Large Query)" 
+    sql: |
+      exec [sys].sp_describe_undeclared_parameters N'DECLARE
+       @StartDate float(8),
+       @EndDate float(8),
+       @Status varchar(500),
+       @ScheduleID int,
+       @SvcDetailID varchar(16),
+       @LoadBlob bit,
+
+      --Added By Abhishek Anand
+      --Added for Mobile issue (StarTDate and EndDate)
+            @StartDate1 nvarchar(max),
+            @EndDate1 nvarchar(max)
+      SET  @StartDate1 = @P1
+      SET  @EndDate1 = @P2
+      SET @StartDate = CONVERT(float(8), CONVERT(datetime, ISNULL(@StartDate1, '''') ))
+      SET @EndDate = CONVERT(float(8), CONVERT(datetime, ISNULL(@EndDate1, '''') ))
+      --SET @StartDate = CONVERT(float(8), CONVERT(datetime, :StartDate))
+      --SET @EndDate = CONVERT(float(8), CONVERT(datetime, :EndDate))
+      SET @Status = ISNULL(@P3, '''')
+      SET @ScheduleID = ISNULL(@P4, 0)
+      SET @SvcDetailID = @P5
+      SET @LoadBlob = @P6
+
+      DECLARE
+            @SchedIDList TABLE (RecID int)
+      DECLARE
+            @TechList TABLE (RecID int)
+
+      INSERT INTO @SchedIDList
+      SELECT RecID FROM dbo.fnGetStringTempTbl(@P7)
+
+      IF (@ScheduleID > 0)
+        INSERT INTO @SchedIDList (RecID) VALUES (@ScheduleID)
+
+
+      INSERT INTO @TechList
+      SELECT RecID FROM dbo.fnGetStringTempTbl(@P8)
+
+      IF (SELECT COUNT(*) FROM @TechList) = 1 AND (SELECT TOP 1 RecID FROM @TechList) = -1
+        DELETE @TechList
+
+
+      IF (SELECT COUNT(*) FROM @SchedIDList) = 0
+
+      SELECT     dbo.tblSvcOrderSched.ScheduleID, dbo.tblSvcOrderSched.SvcOrderID, dbo.tblSvcOrderSched.TechID, dbo.tblSvcOrderSched.EstRepairTime,
+                            dbo.tblSvcOrderSched.SchedDate, dbo.tblSvcOrderSched.StartTime, dbo.tblSvcOrderSched.EndTime, dbo.tblSvcOrderSched.Status,
+                dbo.tblSvcOrderSched.SchedSubStatusID,
+                            dbo.tblSvcOrderSched.Priority, dbo.tblSvcOrderSched.SlotType, dbo.tblSvcOrderSched.SlotOptions, dbo.tblSvcOrderSched.SlotParentID,
+                            dbo.tblSvcOrderSched.SlotRecurrenceIndex, dbo.tblSvcOrderSched.SlotRecurrenceInfo, dbo.tblSvcOrderSched.SlotReminderDisabled, dbo.tblSvcOrderSched.SlotMessage,
+                            dbo.tblSvcOrderSched.SlotRecurrEndDate, dbo.tblSvcOrderSched.UserCreated, dbo.tblSvcOrderSched.TimeCreated,
+                            dbo.tblSvcOrderSched.UserModified, dbo.tblSvcOrderSched.TimeModified, dbo.tblSvcOrderSched.RecordID, dbo.tblCustomer.CustName,
+                            dbo.tblSvcOrderSched.ResidentID, dbo.tblSvcOrderSched.SvcDetailID, dbo.FtblSvcOrder.SvcTypeID, dbo.FtblSvcOrder.IsInstall,
+                            dbo.FtblSvcOrder.RateTableID, dbo.tblSvcOrderSched.InvoiceDesc, dbo.tblSvcOrderSched.BillableHours, dbo.tblSvcOrderSched.PayTypeID,
+                            dbo.tblSvcOrderSched.OvertimePayTypeID, dbo.tblSvcOrderSched.EmpPayTypeInfo, dbo.tblSvcOrderSched.EmpRegularBillHrs, dbo.tblSvcOrderSched.EmpOvertimeBillHrs,
+                            dbo.tblSvcOrderSched.EmpRegularActualHrs, dbo.tblSvcOrderSched.EmpOvertimeActualHrs, tblSvcOrderSched.EmpWeekendBillHrs,
+                            tblSvcOrderSched.EmpHolidayBillHrs, tblSvcOrderSched.EmpWeekendActualHrs, tblSvcOrderSched.EmpHolidayActualHrs, tblSvcOrderSched.LaborHours,
+                            dbo.tblSvcOrderSched.ChargeCrewTech, dbo.tblSvcOrderSched.ShowInvCrewTech, dbo.tblSvcOrderSched.InRecurrence,
+                            CAST((CASE WHEN (dbo.FtblSvcOrder.SalesTax = 1) AND (dbo.fnIsItemTaxable(dbo.FtblSvcOrder.TaxGrpID, 2) = 1)
+                            THEN 1 ELSE 0 END) AS bit) AS SalesTax, dbo.FtblSvcOrder.TaxGrpID, dbo.FtblSvcOrder.CustSiteID, dbo.tblCustomerSite.SiteName,
+                            dbo.tblSvcOrderSched.Sync, dbo.FtblSvcOrder.Status AS SvcStatus,
+
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.Address2 ELSE tblCustomerSite.Address2 END) AS Address2,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.City ELSE tblCustomerSite.City END) AS City,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.State ELSE tblCustomerSite.State END) AS State,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.Zip ELSE tblCustomerSite.PostalCode END) AS Zip,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.Phone ELSE tblCustomerSite.Phone END) AS Phone,
+                            tblCustSiteResident.Address1 AS ResidentName,
+                            CAST(dbo.tblSvcOrderSched.RecordID AS bigint)
+                            --dbo.GetRowStamp(dbo.tblSvcOrderSched.RecordID)
+                            --CAST(dbo.tblSvcOrderSched.RecordID AS bigint)
+                            AS RecordIDInt, dbo.tblSvcOrderSched.RepairCodeID, dbo.tblSvcOrderSched.RepairDesc, dbo.tblSvcOrderSched.TechNote,
+                            dbo.tblSvcOrderSched.CancelReason, dbo.FtblSvcOrder.AgrmntID, dbo.FtblSvcOrder.CustEquipID, dbo.FtblSvcOrder.ShortDesc,
+                            tblSvcOrderSched.TechList, CAST(NULL AS IMAGE) AS TechListImage, FtblSvcOrder.CustID,
+      -- Alexey 3151
+      --					tblSvcOrderSched.CustSignature,
+                (CASE WHEN @LoadBlob = 1 THEN tblSvcOrderSched.CustSignature ELSE NULL END) AS CustSignature,
+
+                tblSvcOrderSched.NameOfSig,
+                            tblSvcOrderSched.AgrmntSchedID, FtblSvcOrder.SubstatusID AS SvcSubstatusID, FtblSvcOrder.LocationID AS BranchID,
+                            dbo.tblCustomer.Phone AS CustPhone, dbo.FtblSvcOrder.CF1 AS WOCF1, dbo.FtblSvcOrder.CF2 AS WOCF2, dbo.FtblSvcOrder.CF3 AS WOCF3,
+                            dbo.FtblSvcOrder.CF4 AS WOCF4, dbo.FtblSvcOrder.CF5 AS WOCF5, dbo.FtblSvcOrder.CF6 AS WOCF6, dbo.FtblSvcOrder.CF7 AS WOCF7,
+                            dbo.FtblSvcOrder.CF8 AS WOCF8, dbo.FtblSvcOrder.CF9 AS WOCF9, dbo.FtblSvcOrder.CF10 AS WOCF10, dbo.FtblSvcOrder.CF11 AS WOCF11,
+                            dbo.FtblSvcOrder.CF12 AS WOCF12, dbo.FtblSvcOrder.CF13 AS WOCF13, dbo.FtblSvcOrder.CF14 AS WOCF14, dbo.FtblSvcOrder.CF15 AS WOCF15,
+                            dbo.FtblSvcOrder.CustPO,
+                            CAST(0 AS bit) AS Post, 0 AS ChargeCrewTechType, 0 AS ShowInvCrewTechType, CAST(0 AS bit) AS DefaultValuesSet, ToBeInvoiced,
+                            FollowUpRequired, FollowUpSchedID, FollowUpRepairCodeID, FollowUpMsg, CAST(NULL AS IMAGE) AS ReminderResourceInfo,
+                            SubItemGroupID, tblSvcOrderSched.TotalTravelTime, tblSvcOrderSched.TotalTravelDistance, tblSvcOrderSched.EquipID,
+      -- Alex Kop #3151
+                            (CASE WHEN tblSvcOrderSched.CustSignature IS NULL THEN 0 ELSE 1 END) AS HasSignature,
+                            ISNULL(@LoadBlob, 0) AS BlobsLoaded,tblSvcOrderSched.CustEquipIDList,tblSvcOrderSched.CustEquipNameList
+                            ,dbo.tblCustomer.AltAccountNo
+      -- #3151
+      FROM         dbo.FtblSvcOrder INNER JOIN
+                            dbo.tblSvcOrderSched ON dbo.FtblSvcOrder.SvcOrderID = dbo.tblSvcOrderSched.SvcOrderID INNER JOIN
+                            dbo.tblCustomer ON dbo.FtblSvcOrder.CustID = dbo.tblCustomer.CustID INNER JOIN
+                            dbo.tblCustomerSite ON dbo.FtblSvcOrder.CustSiteID = dbo.tblCustomerSite.CustSiteID LEFT OUTER JOIN
+                            dbo.tblCustSiteResident ON dbo.tblSvcOrderSched.ResidentID = dbo.tblCustSiteResident.ResidentID
+
+
+      WHERE
+          ((@ScheduleID > 0) AND (ScheduleID = @ScheduleID))
+          OR
+          ((@StartDate = 0 OR @EndDate = 0) OR
+          ((CONVERT(float(8), tblSvcOrderSched.StartTime) between @StartDate and @EndDate)
+          OR
+          (CONVERT(float(8), tblSvcOrderSched.EndTime) between @StartDate and @EndDate)
+          OR
+          (CONVERT(float(8), tblSvcOrderSched.SlotRecurrEndDate) between @StartDate and @EndDate)
+          OR
+          (@StartDate BETWEEN tblSvcOrderSched.StartTime AND tblSvcOrderSched.EndTIme)
+          OR
+          (@EndDate BETWEEN tblSvcOrderSched.StartTime AND tblSvcOrderSched.EndTIme)))
+          AND
+          (((SELECT COUNT(*) FROM @SchedIDList) = 0) OR (dbo.tblSvcOrderSched.ScheduleID IN (SElECT RecID FROM @SchedIDList)))
+          AND
+          (((SELECT COUNT(*) FROM @TechList) = 0) OR (dbo.tblSvcOrderSched.ScheduleID IN (SELECT ScheduleID FROM tblSvcOrderSchedTech WHERE EmployeeID IN (SELECT RecID FROM @TechList))))
+          AND
+          ((@Status = '''') OR (dbo.tblSvcOrderSched.Status IN (SElECT RecID FROM fnGetStringTempTbl(@Status))))
+          AND
+          ((@SvcDetailID = '''') OR  (@SvcDetailID is null) OR (ISNULL(dbo.tblSvcOrderSched.SvcDetailID, 0) = 0))   --Added for Berlin issue fix
+
+      ELSE
+
+
+      SELECT     dbo.tblSvcOrderSched.ScheduleID, dbo.tblSvcOrderSched.SvcOrderID, dbo.tblSvcOrderSched.TechID, dbo.tblSvcOrderSched.EstRepairTime,
+                            dbo.tblSvcOrderSched.SchedDate, dbo.tblSvcOrderSched.StartTime, dbo.tblSvcOrderSched.EndTime, dbo.tblSvcOrderSched.Status,
+                            dbo.tblSvcOrderSched.SchedSubStatusID,
+                            dbo.tblSvcOrderSched.Priority, dbo.tblSvcOrderSched.SlotType, dbo.tblSvcOrderSched.SlotOptions, dbo.tblSvcOrderSched.SlotParentID,
+                            dbo.tblSvcOrderSched.SlotRecurrenceIndex, dbo.tblSvcOrderSched.SlotRecurrenceInfo, dbo.tblSvcOrderSched.SlotReminderDisabled, dbo.tblSvcOrderSched.SlotMessage,
+                            dbo.tblSvcOrderSched.SlotRecurrEndDate, dbo.tblSvcOrderSched.UserCreated, dbo.tblSvcOrderSched.TimeCreated,
+                            dbo.tblSvcOrderSched.UserModified, dbo.tblSvcOrderSched.TimeModified, dbo.tblSvcOrderSched.RecordID, dbo.tblCustomer.CustName,
+                            dbo.tblSvcOrderSched.ResidentID, dbo.tblSvcOrderSched.SvcDetailID, dbo.FtblSvcOrder.SvcTypeID, dbo.FtblSvcOrder.IsInstall,
+                            dbo.FtblSvcOrder.RateTableID, dbo.tblSvcOrderSched.InvoiceDesc, dbo.tblSvcOrderSched.BillableHours, dbo.tblSvcOrderSched.PayTypeID,
+                            dbo.tblSvcOrderSched.OvertimePayTypeID, dbo.tblSvcOrderSched.EmpPayTypeInfo, dbo.tblSvcOrderSched.EmpRegularBillHrs, dbo.tblSvcOrderSched.EmpOvertimeBillHrs,
+                            dbo.tblSvcOrderSched.EmpRegularActualHrs, dbo.tblSvcOrderSched.EmpOvertimeActualHrs, tblSvcOrderSched.EmpWeekendBillHrs,
+                            tblSvcOrderSched.EmpHolidayBillHrs, tblSvcOrderSched.EmpWeekendActualHrs, tblSvcOrderSched.EmpHolidayActualHrs, tblSvcOrderSched.LaborHours,
+                            dbo.tblSvcOrderSched.ChargeCrewTech, dbo.tblSvcOrderSched.ShowInvCrewTech, dbo.tblSvcOrderSched.InRecurrence,
+                            CAST((CASE WHEN (dbo.FtblSvcOrder.SalesTax = 1) AND (dbo.fnIsItemTaxable(dbo.FtblSvcOrder.TaxGrpID, 2) = 1)
+                            THEN 1 ELSE 0 END) AS bit) AS SalesTax, dbo.FtblSvcOrder.TaxGrpID, dbo.FtblSvcOrder.CustSiteID, dbo.tblCustomerSite.SiteName,
+                            dbo.tblSvcOrderSched.Sync, dbo.FtblSvcOrder.Status AS SvcStatus,
+
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.Address2 ELSE tblCustomerSite.Address2 END) AS Address2,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.City ELSE tblCustomerSite.City END) AS City,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.State ELSE tblCustomerSite.State END) AS State,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.Zip ELSE tblCustomerSite.PostalCode END) AS Zip,
+                            (CASE WHEN (ISNULL(tblSvcOrderSched.ResidentID, 0) > 0) THEN tblCustSiteResident.Phone ELSE tblCustomerSite.Phone END) AS Phone,
+                            tblCustSiteResident.Address1 AS ResidentName,
+                            CAST(dbo.tblSvcOrderSched.RecordID AS bigint)
+                            --dbo.GetRowStamp(dbo.tblSvcOrderSched.RecordID)
+                            --CAST(dbo.tblSvcOrderSched.RecordID AS int)
+                            AS RecordIDInt, dbo.tblSvcOrderSched.RepairCodeID, dbo.tblSvcOrderSched.RepairDesc, dbo.tblSvcOrderSched.TechNote,
+                            dbo.tblSvcOrderSched.CancelReason, dbo.FtblSvcOrder.AgrmntID, dbo.FtblSvcOrder.CustEquipID, dbo.FtblSvcOrder.ShortDesc,
+                            tblSvcOrderSched.TechList, CAST(NULL AS IMAGE) AS TechListImage, FtblSvcOrder.CustID,
+
+      -- Alexey 3151
+      --					tblSvcOrderSched.CustSignature,
+                (CASE WHEN @LoadBlob = 1 THEN tblSvcOrderSched.CustSignature ELSE NULL END) AS CustSignature,
+
+                tblSvcOrderSched.NameOfSig,
+                            tblSvcOrderSched.AgrmntSchedID, FtblSvcOrder.SubstatusID AS SvcSubstatusID, FtblSvcOrder.LocationID AS BranchID,
+                            dbo.tblCustomer.Phone AS CustPhone, dbo.FtblSvcOrder.CF1 AS WOCF1, dbo.FtblSvcOrder.CF2 AS WOCF2, dbo.FtblSvcOrder.CF3 AS WOCF3,
+                            dbo.FtblSvcOrder.CF4 AS WOCF4, dbo.FtblSvcOrder.CF5 AS WOCF5, dbo.FtblSvcOrder.CF6 AS WOCF6, dbo.FtblSvcOrder.CF7 AS WOCF7,
+                            dbo.FtblSvcOrder.CF8 AS WOCF8, dbo.FtblSvcOrder.CF9 AS WOCF9, dbo.FtblSvcOrder.CF10 AS WOCF10, dbo.FtblSvcOrder.CF11 AS WOCF11,
+                            dbo.FtblSvcOrder.CF12 AS WOCF12, dbo.FtblSvcOrder.CF13 AS WOCF13, dbo.FtblSvcOrder.CF14 AS WOCF14, dbo.FtblSvcOrder.CF15 AS WOCF15,
+                            dbo.FtblSvcOrder.CustPO,
+                            CAST(0 AS bit) AS Post, 0 AS ChargeCrewTechType, 0 AS ShowInvCrewTechType, CAST(0 AS bit) AS DefaultValuesSet, ToBeInvoiced,
+                            FollowUpRequired, FollowUpSchedID, FollowUpRepairCodeID, FollowUpMsg, CAST(NULL AS IMAGE) AS ReminderResourceInfo,
+                            SubItemGroupID, tblSvcOrderSched.TotalTravelTime, tblSvcOrderSched.TotalTravelDistance, tblSvcOrderSched.EquipID,
+      -- Alex Kop #3151
+                            (CASE WHEN tblSvcOrderSched.CustSignature IS NULL THEN 0 ELSE 1 END) AS HasSignature,
+                            ISNULL(@LoadBlob, 0) AS BlobsLoaded,tblSvcOrderSched.CustEquipIDList,tblSvcOrderSched.CustEquipNameList
+                            ,dbo.tblCustomer.AltAccountNo
+      -- #3151
+      FROM         dbo.FtblSvcOrder INNER JOIN
+                            dbo.tblSvcOrderSched ON dbo.FtblSvcOrder.SvcOrderID = dbo.tblSvcOrderSched.SvcOrderID INNER JOIN
+                            dbo.tblCustomer ON dbo.FtblSvcOrder.CustID = dbo.tblCustomer.CustID INNER JOIN
+                            dbo.tblCustomerSite ON dbo.FtblSvcOrder.CustSiteID = dbo.tblCustomerSite.CustSiteID LEFT OUTER JOIN
+                            dbo.tblCustSiteResident ON dbo.tblSvcOrderSched.ResidentID = dbo.tblCustSiteResident.ResidentID
+
+
+      WHERE
+               (dbo.tblSvcOrderSched.ScheduleID IN (SElECT RecID FROM @SchedIDList))'
+               ,N'@P1 nvarchar(max),@P2 nvarchar(max),@P3 varchar(8000),@P4 int,@P5 varchar(16)
+               ,@P6 bit,@P7 text,@P8 text',N'11/30/2025',N'11/30/2025 11:59:59 PM',NULL,NULL,NULL,1,NULL,'-1'
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      SELECT     tblSvcOrder.SvcOrderID, tblSvcOrder.CustID, tblSvcOrder.CustSiteID, tblSvcOrder.ShortDesc, tblSvcOrder.IsInstall, tblSvcOrder.ContactName,
+                      tblSvcOrder.Instructions, tblSvcOrder.DatePromised, tblSvcOrder.TimeFromPromised, tblSvcOrder.TimeToPromised, tblSvcOrder.SvcDateAdded,
+                      tblSvcOrder.SvcTimeAdded, tblSvcOrder.SvcUserAdded, tblSvcOrder.Priority, tblSvcOrder.SvcTypeID, tblSvcOrder.Status, tblSvcOrder.TaxGrpID,
+                      tblSvcOrder.RateTableID, tblCustomer.CustName, tblCustomer.Contact AS CustContact, tblCustomerSite.SiteName,
+                      tblCustomerSite.Address2 AS SiteAdd, tblCustomerSite.Contact AS SiteContact, tblCustomerSite.Phone AS SitePhone,
+                      tblCustomerSite.AltPhone AS SiteAltPhone, tblCustomerSite.Email AS SiteEmail, tblEmployee.EmpName AS TakenBy, tblCustomerSite.City,
+                      tblCustomerSite.State, tblCustomerSite.PostalCode, ISNULL(tblCustSiteResident.FirstName + ' ', '') + ISNULL(tblCustSiteResident.LastName, '')
+                      AS ResidentName, tblSvcOrder.AgrmntID, tblSvcOrder.CustEquipID, tblSvcOrder.SvcAmount, tblSvcOrder.SvcAmtBilled, tblSvcOrder.LocationID,
+                      tblSvcOrder.SubStatusID, tblSvcOrder.CustPO, tblCustEquip.PartID AS EquipName, tblCustEquip.ModelNum AS EquipModelNum,
+                      tblCustEquip.SerialNum AS EquipSerialNum, tblCustEquip.EquipLocation, tblSvcOrder.ResidentID,
+                      tblSvcProblems.ProblemCode, tblSvcOrderProblems.ProblemDesc, tblSvcOrderProblems.EstRepairTime, tblSvcOrder.CustEquipIDList, tblSvcOrder.CustEquipNameList
+      FROM         tblSvcOrder INNER JOIN
+                            tblCustomer ON tblSvcOrder.CustID = tblCustomer.CustID INNER JOIN
+                            tblCustomerSite ON tblSvcOrder.CustSiteID = tblCustomerSite.CustSiteID LEFT OUTER JOIN
+                            tblCustEquip ON tblSvcOrder.CustEquipID = tblCustEquip.CustEquipID LEFT OUTER JOIN
+                            tblEmployee ON tblSvcOrder.SvcUserAdded = tblEmployee.EmployeeID LEFT OUTER JOIN
+                            tblCustSiteResident ON tblSvcOrder.ResidentID = tblCustSiteResident.ResidentID LEFT OUTER JOIN
+                            tblSvcOrderProblems ON tblSvcOrder.SvcOrderID = tblSvcOrderProblems.SvcOrderID AND tblSvcOrderProblems.SvcProblemID =
+                                (SELECT     TOP 1 SvcProblemID
+                                  FROM          tblSvcOrderProblems
+                                  WHERE      (tblSvcOrderProblems.SvcOrderID = tblSvcOrder.SvcOrderID)) LEFT OUTER JOIN
+                            tblSvcProblems ON tblSvcOrderProblems.ProblemID = tblSvcProblems.ProblemID
+      WHERE  (1=1)
+      AND (tblSvcOrder.SvcOrderID=154491)
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      SELECT 
+        SubStatusID, Description, SchedStatusID, SubStatusColor, IsDefault,
+        IsActive, dbo.GetRowStamp(RecordID) AS RecordID
+      FROM
+        dbo.tblSchedSubStatus
+      WHERE CAST(RecordID AS bigint)>320873146 ORDER BY CAST(RecordID AS bigint)
+
+  - id: q5
+    title: "Query 5"
+    sql: |  
+      exec sp_executesql N'INSERT INTO tblSvcOrderSched (
+      "SvcOrderID", "TechID", "EstRepairTime", "SchedDate", "StartTime", "EndTime", "Status",
+       "SchedSubStatusID", "Priority", "SlotType", "SlotOptions", "SlotParentID", "SlotRecurrenceIndex", 
+       "SlotRecurrenceInfo", "SlotReminderDisabled", "SlotMessage", "SlotRecurrEndDate", "UserCreated", 
+       "TimeCreated", "UserModified", "TimeModified", "ResidentID", "SvcDetailID", "InvoiceDesc", 
+       "BillableHours", "PayTypeID", "OvertimePayTypeID", "EmpPayTypeInfo", "EmpRegularBillHrs",
+        "EmpOvertimeBillHrs", "EmpRegularActualHrs", "EmpOvertimeActualHrs", "EmpWeekendBillHrs", 
+        "EmpHolidayBillHrs", "EmpWeekendActualHrs", "EmpHolidayActualHrs", "LaborHours", "ChargeCrewTech", 
+        "ShowInvCrewTech", "InRecurrence", "Sync", "RepairCodeID", "RepairDesc", "TechNote", "CancelReason",
+         "TechList", "CustSignature", "NameOfSig", "AgrmntSchedID", "ToBeInvoiced", "FollowUpRequired", 
+         "FollowUpSchedID", "FollowUpRepairCodeID", "FollowUpMsg", "SubItemGroupID", "TotalTravelTime", 
+         "TotalTravelDistance", "EquipID", "CustEquipIDList", "CustEquipNameList")
+      VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, @P13, @P14, @P15, @P16, @P17,
+       @P18, @P19, @P20, @P21, @P22, @P23, @P24, @P25, @P26, @P27, @P28, @P29, @P30, @P31, @P32, @P33, @P34,
+        @P35, @P36, @P37, @P38, @P39, @P40, @P41, @P42, @P43, @P44, @P45, @P46, @P47, @P48, @P49, @P50, @P51,
+         @P52, @P53, @P54, @P55, @P56, @P57, @P58, @P59, @P60)',N'@P1 int,@P2 int,@P3 float,@P4 datetime2(7),
+         @P5 datetime2(7),@P6 datetime2(7),@P7 int,@P8 int,@P9 int,@P10 int,@P11 int,@P12 int,@P13 int,
+         @P14 varbinary(8000),@P15bit,@P16 varchar(8000),@P17 datetime2(7),@P18 varchar(8000)
+         ,@P19 datetime2(7),@P20 varchar(8000),@P21 datetime2(7),@P22 int,@P23 int,@P24 varchar(8000),
+         @P25 float,@P26 int,@P27 int,@P28 varchar(8000),@P29 varchar(8000),@P30 varchar(8000)
+         ,@P31 varchar(8000),@P32 varchar(8000),@P33 varchar(8000),@P34 varchar(8000),@P35 varchar(8000),
+         @P36 varchar(8000),@P37 varchar(8000),@P38 varchar(8000),@P39 varchar(8000),@P40 bit,@P41 bit,
+         @P42 int,@P43 varchar(8000),@P44 varchar(8000),@P45 varchar(8000),@P46 varchar(8000),
+         @P47 varbinary(8000),@P48 varchar(8000),@P49 int,@P50 bit,@P51 bit,@P52 int,@P53 int,
+         @P54 varchar(8000),@P55 int,@P56 float,@P57 float,@P58 int,@P59 varchar(8000),@P60 varchar(8000)'
+         ,154491,NULL,NULL,'2025-11-10 00:00:00','2025-11-10 09:00:00','2025-11-10 12:00:00',2,NULL,NULL,
+         0,6,NULL,-1,0x,NULL,NULL,NULL,'Admin','2025-11-30 19:27:20.9760000',NULL,NULL,NULL,NULL,'.',NULL
+         ,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'',NULL,NULL,0,NULL,1,NULL,NULL,NULL,'10001'
+         ,0x,NULL,NULL,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'',''
+
+  - id: q6
+    title: "Query 6"
+    sql: |  
+      exec sp_executesql N'DECLARE @ScheduleID int
+      SET @ScheduleID = @P1
+      DELETE tblSvcOrderSchedTech
+      WHERE ScheduleID = @ScheduleID
+      INSERT INTO tblSvcOrderSchedTech (ScheduleID, EmployeeID, TimeCreated)
+      SELECT @ScheduleID, RecID, GETDATE() FROM dbo.[fnGetStringTempTbl](@P2)',
+      N'@P1 int,@P2 nvarchar(4000)',347063,N'10001'
+
+  - id: q7
+    title: "Query 7"
+    sql: | 
+      exec sp_executesql N'EXEC spSvcOrderSched_IUD @P1,@P2,@P3,@P4,
+      @P5,@P6,@P7,@P8,@P9,@P10,@P11,@P12,@P13,
+      @P14,@P15,@P16,@P17',N'@P1 varchar(100),@P2 varchar(100),@P3 varchar(100),
+      @P4 varchar(100),@P5 varchar(100),@P6 varchar(100),@P7 varchar(100),@P8 varchar(100),
+      @P9 varchar(100),@P10 varchar(100),@P11 varchar(100),@P12 varchar(100),@P13 varchar(100),@P14 char(1),
+      @P15 varchar(100),@P16 int,@P17 int','347063','-1','2025-11-10 09:00:00',NULL,NULL,'2025-11-10 12:00:00'
+      ,NULL,'2','','10001',NULL,NULL,'154491','I',NULL,1,1
+
+
+  - id: q8
+    title: "Query 8"
+    sql: | 
+      exec sp_executesql N'INSERT INTO tblSvcSchedTimestamp (ChangeType, ScheduleID, SvcOrderID, StartTime,
+       EndTime,
+            Status, SchedSubStatusID, TechList, UserCreated, TimeCreated, DeviceType)
+      SELECT @P1, @P2, @P3, @P4, @P5,
+            @P6, @P7, @P8, @P9, GETDATE(), @P10',N'@P1 tinyint,@P2 int,@P3 int,@P4 datetime,@P5 datetime,
+            @P6 int,@P7 int,@P8 text,@P9 varchar(50),@P10 tinyint',1,347063,154491,'2025-11-10 09:00:00',
+            '2025-11-10 12:00:00',2,NULL,'10001','Admin',1
+
+  - id: q9
+    title: "Query 9"
+    sql: | 
+      --SELECT
+      --    *,
+      --    CAST(0 AS bit) AS Post, 0 AS ChargeCrewTechType, 0 AS ShowInvCrewTechType, CAST(0 AS bit) AS DefaultValuesSet,'No Attachment' AS Attached
+      --  FROM
+      --    tblSvcOrderSched
+
+      SELECT
+          *,
+          CAST(0 AS bit) AS Post, 0 AS ChargeCrewTechType, 0 AS ShowInvCrewTechType, CAST(0 AS bit) AS DefaultValuesSet,
+          (CASE WHEN ISNULL(tblFileLink.TransID, 0) = 0 THEN 'No Attachment' ELSE 'Show Attachment' END) AS Attached
+        FROM
+          tblSvcOrderSched
+          LEFT OUTER JOIN
+          [VwFileLinkSched] as tblFileLink ON dbo.tblSvcOrderSched.ScheduleID = tblFileLink.TransID
+      WHERE SvcOrderID=154491
+
+  - id: q10
+    title: "Query 10"
+    sql: |
+      declare @p6 int
+      set @p6=0
+      exec sp_executesql N'/*DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int
+
+      SET  @SvcOrderID =:SvcOrderID
+      SET  @Check =:Check
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0, @SvcIsValid output
+
+      Set :RecCount  =@SvcIsValid  */
+      DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int,@OpenedUserID int
+
+      SET  @SvcOrderID =@P1
+      SET  @Check =@P2
+      SET @OpenedUserID=@P3
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0,@OpenedUserID, @SvcIsValid output
+
+      Set @P4  =@SvcIsValid',N'@P1 int,@P2 int,@P3 nvarchar(4000),@P4 int OUTPUT',154491,2,N'1',@p6 output
+      select @p6

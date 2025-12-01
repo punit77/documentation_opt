@@ -1,0 +1,5 @@
+name: "VwFileLinkSched"
+definition: |
+  create view [dbo].[VwFileLinkSched]
+  as 
+  select distinct TransID from tblFileLink where TransType='tblSvcOrderSched'

@@ -1,0 +1,288 @@
+name: "spupdatesvcheader"
+definition: |
+  CREATE PROCEDURE [dbo].[spUpdateSvcHeader]
+  (
+    @SvcOrderID int,
+    @ReopenOnly bit  /* indicates if we should only try to reopen if needed or we should try to close work order as well*/
+  )
+  AS
+
+  DECLARE @EstPartCost money,
+    @EstLaborCost money,
+    @EstHours int,
+    @SvcTaxAmount money, 
+    @SvcOrdrAmount money,
+    @ActualPartCost money,
+    @ActualLaborCost money,
+    @ActualHours float,
+    @IsInstall bit,
+    @NonStockCost money,
+    @OldStockCost money,
+    @OldNonStockCost money,
+    @OldLaborCost money,
+    @SvcOrderType int,
+    @FromAcct int,
+    @ToAcct int,
+    @TransAmt money,
+    @JournalID int,
+    @BillableHours money,
+    @EstimateTaxAmt money,
+    @BilledAmt money,
+    @SvcStatus tinyint,
+    @AdditionalAmt money,
+    @AdjustToAmt money,
+    @AdjustmentAmt money,
+    @AdjustPartID int,
+    @CurAdjustPartID int,
+    @PrevAdjustmentAmt money
+
+  DECLARE @GLAcctID int, @IsStock bit, @SvcTypeID int,
+    @PartDesc varchar(8000), @CustID int,
+    @WOPartMarkupID int, 
+    @Taxable bit, @TaxGrpID int, @TechID int,
+    @PartPrintable bit, @LineNum int,
+    @QBGLAccountID int, 
+    @TaxTotal money, @ResidentID int
+
+  SET @OldStockCost = ISNULL((SELECT ISNULL(ActualPartCost, 0) /* - ISNULL(NonStockPartCost, 0)*/ FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID), 0)
+  SET @OldNonStockCost = ISNULL((SELECT ISNULL(NonStockPartCost, 0) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID), 0)
+  SET @OldLaborCost = ISNULL((SELECT ISNULL(ActualLaborCost, 0) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID), 0)
+  SET @SvcOrderType = ISNULL((SELECT SvcTypeID FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID), 0)
+  SET @AdditionalAmt = (SELECT ISNULL(AdditionalAmt, 0) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+  (SELECT @IsInstall = IsInstall, @SvcStatus = Status, @BilledAmt = ROUND(ISNULL(SvcAmtBilled, 0), 2)  FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+  SET @ActualPartCost = ISNULL((SELECT SUM((ISNULL(UnitCost,0) * ISNULL(Quantity,0)) + ISNULL(AdditionalCost, 0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID) AND (TransType = 1) AND (IsStockPart = 1)), 0)
+  SET @NonStockCost = ISNULL((SELECT SUM((ISNULL(UnitCost,0) * ISNULL(Quantity,0)) + ISNULL(AdditionalCost, 0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID) AND (TransType = 1) AND (IsStockPart = 0)), 0)
+  SET @ActualLaborCost = ISNULL((SELECT SUM((ISNULL(UnitCost,0) * ISNULL(ActualLaborQty,0)) + ISNULL(AdditionalCost, 0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID) AND (TransType =2)), 0)
+  SET @ActualHours = (SELECT SUM(ISNULL(ActualLaborQty,0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID) AND (TransType =2))
+  SET @BillableHours = (SELECT SUM(ISNULL(Quantity,0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID) AND (TransType =2))
+
+  IF NOT EXISTS(select * from TblSvcOrder where EStVersionNum>1 and Status = 4 and Svcorderid=@SvcOrderID)
+  exec Sp_tblSvcOrderTrg @SvcOrderID
+
+  IF @IsInstall = 0
+  BEGIN
+    SET @SvcTaxAmount = ROUND((SELECT SUM(ISNULL(LineTaxTotal,0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID)), 2)
+    SET @SvcOrdrAmount =  ROUND((SELECT SUM(ISNULL(LineSaleTotal,0)) AS Expr1 FROM tblSvcOrderDetail WHERE (SvcOrderID = @SvcOrderID)), 2)
+
+    /* IF Currently In-Process and amount fully billed */
+    IF (@SvcStatus = 1) AND (@ReopenOnly = 0) AND ((@SvcOrdrAmount = @BilledAmt) AND (@SvcOrdrAmount > 0))
+      SET @SvcStatus = 2
+    ELSE IF (@SvcStatus = 2) AND (@SvcOrdrAmount > @BilledAmt)
+      SET @SvcStatus = 1
+
+    UPDATE tblSvcOrder SET Status = @SvcStatus, ActualPartCost = @ActualPartCost, NonStockPartCost = @NonStockCost, ActualLaborCost = @ActualLaborCost, ActualHours = @ActualHours,
+        BillableHours = @BillableHours, SvcTaxAmount = Round(@SvcTaxAmount, 2), SvcAmount = Round(@SvcOrdrAmount, 2) WHERE SvcOrderID = @SvcOrderID
+  END ELSE
+  BEGIN
+    SET @EstHours = (SELECT ISNULL(SUM(Quantity),0) FROM vEstAndActiveChangeDetails WHERE SvcOrderID = @SvcOrderID AND TransType=2)
+    SET @EstPartCost = (SELECT SUM(ISNULL(Quantity, 0) * ISNULL(UnitCost, 0)) FROM vEstAndActiveChangeDetails WHERE SvcOrderID = @SvcOrderID AND TransType=1)
+    SET @EstLaborCost = (SELECT SUM(ISNULL(Quantity, 0) * ISNULL(UnitCost, 0)) FROM vEstAndActiveChangeDetails WHERE SvcOrderID = @SvcOrderID AND TransType=2)
+    SET @EstimateTaxAmt = ISNULL((SELECT SUM(ISNULL(LineTaxTotal,0)) AS Expr1 FROM vEstAndActiveChangeDetails WHERE (SvcOrderID = @SvcOrderID)), 0)
+    SET @SvcTaxAmount = (SELECT SUM(ISNULL(TaxAmt,0)) FROM tblInvoice WHERE (TransType = 1 AND TransID = @SvcOrderID AND ISNULL(Void, 0) = 0))  
+    SET @SvcOrdrAmount = (ISNULL((SELECT SUM(ISNULL(LineSaleTotal,0)) AS Expr2 FROM vEstAndActiveChangeDetails WHERE (SvcOrderID = @SvcOrderID)), 0) + @AdditionalAmt) - @EstimateTaxAmt
+    SET @AdjustToAmt = ISNULL((SELECT AdjustToAmt FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID), 0)
+    /*select Adjustment part but exclude adjust part on any revision*/
+    SET @CurAdjustPartID = ISNULL((SELECT TOP 1 SvcEstDetailID FROM tblSvcOrderEst WHERE SvcOrderID = @SvcOrderID AND EstChangeID IS NULL AND IsAdjustItem = 1), 0)
+    SET @PrevAdjustmentAmt = ISNULL((SELECT LineSaleTotal - LineTaxTotal FROM tblSvcOrderEst WHERE SvcEstDetailID = @CurAdjustPartID), 0)
+    /* if AdjustToAmt is 0 tehn we are not adjusting teh estiamte at all */
+    SET @AdjustmentAmt = (CASE WHEN @AdjustToAmt = 0 THEN 0 ELSE (@AdjustToAmt - (@SvcOrdrAmount - @PrevAdjustmentAmt)) END) 
+
+    IF (@AdjustmentAmt <> 0)
+    BEGIN
+      SET @AdjustPartID = ISNULL((SELECT TOP 1 SvcAdjustPartID FROM tblCompanyPreference), 0)
+
+      SELECT @SvcTypeID = SvcTypeID, @CustID = CustID,
+        @WOPartMarkupID = PartMarkupID,
+        @Taxable = SalesTax, @TaxGrpID = TaxGrpID,
+        @TechID = ISNULL(@TechID, DefTechID),
+        @ResidentID = ResidentID, @PartPrintable = ShowItemPrice
+      FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID 
+
+      /* check if tehre is already an adjustment item on teh work order */
+      IF @CurAdjustPartID > 0
+      BEGIN
+        SET @Taxable = (SELECT Taxable FROM tblSvcOrderEst WHERE SvcEstDetailID = @CurAdjustPartID)
+
+        IF @Taxable = 1
+          EXEC spGetPartTaxAmt @TaxGrpID, 1, @AdjustmentAmt, @TaxTotal OUTPUT
+        ELSE 
+          SET @TaxTotal = 0.00
+
+        UPDATE tblSvcOrderEst SET UnitSaleAmt = @AdjustmentAmt, UnitTaxAmt = @TaxTotal, LineTaxTotal = @TaxTotal, LineSaleTotal = @AdjustmentAmt + @TaxTotal WHERE SvcEstDetailID = @CurAdjustPartID
+      END
+      /* make sure taht there is a part id set in comp pref to use here */
+      ELSE IF @AdjustPartID > 0
+      BEGIN
+  /**/
+        -- Alex Kop #3234 bug 
+        DECLARE
+          @UnitMeasureID int
+
+        SET @UnitMeasureID = (SELECT tblParts.UnitMeasureID FROM tblParts, tblUnitMeasure WHERE PartID = @AdjustPartID AND tblUnitMeasure.UnitCount = 1 AND tblParts.UnitMeasureID = tblUnitMeasure.UnitMeasureID)
+        -- #3234
+
+        SELECT @IsStock = (CASE WHEN ItemType = 1 THEN 1 WHEN ItemType = 2 THEN 0 END),
+          @PartDesc = SalesDesc,
+          @QBGLAccountID = QBIncGLAccountID
+        FROM tblParts
+        WHERE PartID = @AdjustPartID
+
+        SELECT @SvcTypeID = SvcTypeID, @CustID = CustID,
+          @WOPartMarkupID = PartMarkupID,
+          @Taxable = SalesTax, @TaxGrpID = TaxGrpID,
+          @TechID = ISNULL(@TechID, DefTechID),
+          @ResidentID = ResidentID, @PartPrintable = ShowItemPrice
+        FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID 
+
+        SET @Taxable = (CASE WHEN @Taxable = 1 AND dbo.fnIsItemTaxable(@TaxGrpID, 1) = 1 THEN 1 ELSE 0 END)
+
+        SELECT @GLAcctID = (CASE WHEN @IsStock = 1 THEN StockGLAcctSetID
+          WHEN @ISStock = 0 THEN NonStockGLAcctSetID END)
+        FROM tblSvcOrderType
+        WHERE SvcTypeID = @SvcTypeID
+
+        /*SET @PartPrintable = (SELECT ISNULL(EstPrintParts, 1) FROM tblCompanyPreference)*/
+
+        IF (@Taxable = 0)
+          SET @TaxTotal = 0.00
+        ELSE
+          EXEC spGetPartTaxAmt @TaxGrpID, 1, @AdjustmentAmt, @TaxTotal OUTPUT
+
+        SET @LineNum = (SELECT ISNULL(MAX(LineItemNum), 0) + 1 FROM tblSvcOrderEst WHERE SvcOrderID = @SvcOrderID AND EstChangeID IS NULL)
+
+        INSERT INTO dbo.tblSvcOrderEst
+              (SvcOrderID
+              ,TransType
+              ,LineItemNum
+              ,GLAcctSetID
+              ,QBGLAccountID
+              ,ResidentID
+              ,PartMarkupID
+              ,PartID
+              ,UnitMeasureID
+              ,IsStockPart
+              ,InvoiceDesc
+              ,TempQty
+              ,Quantity
+              ,UnitCost
+              ,UnitSaleAmt
+              ,UnitTaxAmt
+              ,Taxable
+              ,LineSaleTotal
+              ,LineTaxTotal
+              ,LineCostTotal
+              ,Printable
+              ,IsAdjustItem
+              ,UserCreated
+              ,TimeCreated
+        )
+          VALUES
+              (@SvcOrderID
+              ,1
+              ,@LineNum
+              ,@GLAcctID
+              ,@QBGLAccountID
+              ,@ResidentID
+              ,@WOPartMarkupID
+              ,@AdjustPartID
+  --					   ,NULL
+              -- Alex Kop #3234 bug
+              ,@UnitMeasureID
+              -- #3234
+              ,@IsStock
+              ,@PartDesc
+              ,1
+              ,1
+              ,0 /*UnitCost?*/
+              ,@AdjustmentAmt
+              ,@TaxTotal
+              ,@Taxable
+              ,@AdjustmentAmt + @TaxTotal
+              ,@TaxTotal
+              ,0 /*LineCostTotal?*/
+              ,@PartPrintable
+              ,1
+              ,NULL /*UserCreated?*/
+              ,GETDATE())
+
+  /**/
+      END
+      ELSE
+      BEGIN
+        RAISERROR('Adjustment Part is missing in Company Preferences!', 16, 1)
+      END
+
+      /* now recalc teh work order amount */	
+      SET @EstimateTaxAmt = (SELECT SUM(ISNULL(LineTaxTotal,0)) AS Expr1 FROM vEstAndActiveChangeDetails WHERE (SvcOrderID = @SvcOrderID))  
+      SET @SvcOrdrAmount = ((SELECT SUM(ISNULL(LineSaleTotal,0)) AS Expr2 FROM vEstAndActiveChangeDetails WHERE (SvcOrderID = @SvcOrderID)) + @AdditionalAmt) - @EstimateTaxAmt
+    END
+
+    /* IF Currently In-Process and amount fully billed */
+    IF (@SvcStatus = 1) AND (@ReopenOnly = 0) AND ((@SvcOrdrAmount <= @BilledAmt) AND (@SvcOrdrAmount > 0))
+      SET @SvcStatus = 2
+    ELSE IF (@SvcStatus = 2) AND (@SvcOrdrAmount > @BilledAmt)
+      SET @SvcStatus = 1
+
+    UPDATE tblSvcOrder SET Status = @SvcStatus, SvcAmount = Round(@SvcOrdrAmount, 2), SvcTaxAmount = Round(@SvcTaxAmount, 2), EstimateTaxAmt = ROUND(@EstimateTaxAmt, 2), EstHours = @EstHours, EstPartCost = @EstPartCost, EstLaborCost = @EstLaborCost, ActualPartCost = @ActualPartCost, NonStockPartCost = @NonStockCost, ActualLaborCost = @ActualLaborCost, ActualHours = @ActualHours WHERE SvcOrderID = @SvcOrderID
+
+  END
+
+  /* First Create Journal header */
+  IF ((@ActualPartCost /* - @NonStockCost */ ) <> @OldStockCost ) OR (@OldNonStockCost <> @NonStockCost) OR (@OldLaborCost <> @ActualLaborCost)
+  BEGIN
+    INSERT INTO tblJournal (TransType, TransID, Date, Description, JournalType, Sync, IsActive, UserCreated, TimeCreated) VALUES (1, @SvcOrderID, GetDate(), 'Processing Service Order#: ' + CAST(@SvcOrderID AS VarChar(25)), 1, 0, 1, '', GetDate())
+
+    SET @JournalID = (SELECT @@Identity)
+  END
+
+  /* Then Journal Detail records */
+  IF ((@ActualPartCost /* - @NonStockCost */ ) <> @OldStockCost ) 
+  BEGIN
+    SET @FromAcct = (SELECT PartStockGLAcctID FROM tblCompanyPreference)
+    SET @ToAcct = (SELECT InProcessGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.StockGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+    SET @TransAmt = ((@ActualPartCost /* - @NonStockCost */ ) - @OldStockCost) 
+
+    IF @TransAmt > 0
+    BEGIN
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, @TransAmt, 2, 1, '', GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, @TransAmt, 1, 1, '', GetDate())    
+    END ELSE
+    BEGIN
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, ABS(@TransAmt), 1, 1, '', GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, ABS(@TransAmt), 2, 1, '', GetDate())    
+    END
+  END
+
+  IF (@OldNonStockCost <> @NonStockCost)
+  BEGIN
+    SET @FromAcct = (SELECT PartNonStockGLAcctID FROM tblCompanyPreference)
+    SET @ToAcct = (SELECT InProcessGLAcctID FROM tblSvcOrderType INNER JOIN dbo.tblGLAccountSet ON dbo.tblSvcOrderType.NonStockGLAcctSetID = dbo.tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+    SET @TransAmt = (@NonStockCost - @OldNonStockCost)
+
+    IF @TransAmt > 0
+    BEGIN
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, @TransAmt, 2, 1, '', GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, @TransAmt, 1, 1, '', GetDate())    
+    END ELSE
+    BEGIN
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, ABS(@TransAmt), 1, 1, '', GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, ABS(@TransAmt), 2, 1, '', GetDate())    
+    END
+  END
+
+  IF (@OldLaborCost <> @ActualLaborCost)
+  BEGIN
+    SET @FromAcct = (SELECT LaborVarianceGLAcctID FROM tblCompanyPreference)
+    SET @ToAcct = (SELECT InProcessGLAcctID FROM tblSvcOrderType INNER JOIN dbo.tblGLAccountSet ON dbo.tblSvcOrderType.LaborGLAcctSetID = dbo.tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+    SET @TransAmt = (@ActualLaborCost - @OldLaborCost)
+
+    IF @TransAmt > 0
+    BEGIN
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, @TransAmt, 2, 1, '', GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, @TransAmt, 1, 1, '', GetDate())    
+    END ELSE
+    BEGIN
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, ABS(@TransAmt), 1, 1, '', GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, ABS(@TransAmt), 2, 1, '', GetDate())    
+    END
+  END

@@ -1,0 +1,84 @@
+name: "spGetSortedPage"
+definition: |
+  CREATE PROCEDURE [dbo].[spGetSortedPage]
+
+  (
+
+    @SQLText NVARCHAR(4000),
+
+    @TableName VARCHAR(50),
+
+    @PrimaryKey VARCHAR(25),
+
+    @SortField VARCHAR(100),
+
+    @PageSize INT,
+
+    @PageIndex INT = 0,
+
+    @QueryFilter VARCHAR(4000) = '',
+
+    @TotalRecords int OUTPUT
+
+  ) AS
+
+  SET NOCOUNT ON
+
+
+  DECLARE @SizeString AS VARCHAR(5)
+
+  DECLARE @PrevString AS VARCHAR(5)
+
+
+  SET @SizeString = CONVERT(VARCHAR, @PageSize)
+
+  SET @PrevString = CONVERT(VARCHAR, @PageIndex)
+
+
+  IF @QueryFilter <> ''
+
+    EXEC(
+
+    @SQLText + ' WHERE ' + @QueryFilter + ' AND ' + @PrimaryKey + ' NOT IN
+
+        (SELECT TOP ' + @PrevString + ' ' + @PrimaryKey + ' FROM ' + @TableName + ' WHERE ' + @QueryFilter + ' ORDER BY ' + @SortField + ')
+
+      ORDER BY ' + @SortField 
+
+    )
+
+  ELSE
+
+    EXEC(
+
+    @SQLText + ' WHERE ' + @PrimaryKey + ' NOT IN
+
+        (SELECT TOP ' + @PrevString + ' ' + @PrimaryKey + ' FROM ' + @TableName + ' ORDER BY ' + @SortField + ')
+
+      ORDER BY ' + @SortField 
+
+    )
+
+
+
+  /* Currently we cant use it becuase DA Dataset could not use output params
+
+  declare 
+
+    @SQL NVARCHAR(4000),
+
+    @TotalRec int
+
+
+  SET @SQL = 'SELECT @P1 = ISNULL(COUNT(*), 0) FROM ' + @TableName + ' WHERE ' + @QueryFilter
+
+    
+
+  exec sp_executesql @SQL, N'@P1 int OUTPUT',@P1 = @TotalRec output
+
+  SELECT @TotalRecords = @TotalRec
+
+  */
+
+
+  RETURN 0

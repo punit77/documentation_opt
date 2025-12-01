@@ -1,0 +1,39 @@
+sections:
+  - id: open_wo_lookup
+    title: "Open WO Lookup"
+
+  - id: create_svccall
+    title: "Create Service Call for a Customer"
+
+  - id: on_ok_click_svc_call
+    title: "Clicking OK on a WorkOrder to close"
+
+  - id: traverse_on_a_svc_call
+    title: "Open a WO and Traverse Tabs"
+
+  - id: on_click_save_svccall
+    title: "Saving a WorkOrder - SvcCall"
+
+  - id: create_sched_by_wo
+    title: "Assigning a Schedule on Sched Board"
+
+  - id: create_inv_from_wo
+    title: "Creating an Invoice from WO"
+
+  - id: create_po_from_wo
+    title: "Creating a PO from WO"
+
+  - id: close_bill_wo
+    title: "Closing/Billing the WO"
+
+  - id: create_estimate
+    title: "Creating an Estimate"
+    
+  - id: traverse_on_a_estimate
+    title: "Open an Estimate and Traverse Tabs"
+
+  - id: save_estimate_wo
+    title: "Saving an Estimate"  
+  
+  - id: activate_estimate
+    title: "Activating an Estimate"  

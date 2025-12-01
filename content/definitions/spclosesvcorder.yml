@@ -1,0 +1,167 @@
+name: "spclosesvcorder"
+definition: |
+  CREATE PROCEDURE [dbo].[spCloseSvcOrder]
+  (
+    @SvcOrderID int,
+    @UserName varchar(20),
+    @InvoiceID int = 0     
+  )
+  AS
+    /* SET NOCOUNT ON */
+
+  DECLARE
+    @SvcStatus int,
+    @PrevSvcStatus int,
+    @IsInstall bit,
+    @StockCost money,
+    @NonStockCost money,
+    @LaborCost money,
+    @SvcOrderType int,
+    @JournalID int,
+    @FromAcct int,
+    @ToAcct int,
+    @TransAmt money,
+    @AmountBilled money,
+    @SvcAmt money,
+    @TaxAmtBilled money,
+    @SvcConvertPartToEquipOnCreate bit
+
+    SELECT @IsInstall = IsInstall, @SvcAmt = SvcAmount, @PrevSvcStatus = Status FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID 
+  --  SELECT @IsInstall = IsInstall, @SvcAmt = SvcAmount + (CASE IsInstall WHEN 1 THEN EstimateTaxAmt ELSE 0 END) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID 
+  /* old code
+    SET @AmountBilled = (SELECT Round(SUM(ISNULL(SaleAmt, 0)), 2) FROM tblInvoice WHERE TransType = 1 AND TransID = @SvcOrderID AND ISNULL(Void, 0) <> 1) 
+    
+    UPDATE tblSvcOrder SET Status = (CASE WHEN @SvcAmt > @AmountBilled THEN 1 ELSE 2 END), SvcAmtBilled = @AmountBilled WHERE (SvcOrderID = @SvcOrderID)
+  */
+    SELECT @AmountBilled = Round(SUM(ISNULL(SaleAmt, 0)), 2), @TaxAmtBilled = SUM(ISNULL(TaxAmt, 0)) FROM tblInvoice WHERE TransType = 1 AND TransID = @SvcOrderID AND ISNULL(Void, 0) <> 1 
+    
+    
+    /* on an estimate we compare the amounts before tax */
+      -- 25092016 old -- UPDATE tblSvcOrder SET Status = (CASE WHEN @SvcAmt > (@AmountBilled - (CASE @IsInstall WHEN 1 THEN @TaxAmtBilled ELSE 0 END)) THEN 1 ELSE 2 END), SvcAmtBilled = @AmountBilled WHERE (SvcOrderID = @SvcOrderID)
+    UPDATE tblSvcOrder SET Status = (CASE WHEN abs(@SvcAmt) > (abs(@AmountBilled) - (CASE @IsInstall WHEN 1 THEN abs(@TaxAmtBilled) ELSE 0 END)) THEN 1 ELSE 2 END), SvcAmtBilled = @AmountBilled WHERE (SvcOrderID = @SvcOrderID)
+
+    SET @SvcStatus = (SELECT Status FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+    
+    /* if status has changed then update sub status */
+    IF @SvcStatus <> ISNULL(@PrevSvcStatus, 0)
+    UPDATE tblSvcOrder SET TimeModified=getdate(), UserModified=RTRIM(@UserName), SubStatusID = (SELECT TOP 1 SubStatusID FROM tblSvcSubStatus WHERE IsDefault = 1 AND SvcStatusID = @SvcStatus AND IsInstall = @IsInstall) WHERE SvcOrderID = @SvcOrderID
+
+
+  IF @SvcStatus = 2 /* Svc Order is closed*/
+  BEGIN
+    UPDATE tblSvcOrderDetail SET InvoiceID = @InvoiceID WHERE SvcOrderID = @SvcOrderID AND ISNULL(InvoiceID, 0) = 0
+    UPDATE tblSvcOrder SET SvcDateComplete = (CASE WHEN SvcDateComplete IS NULL THEN GETDATE() ELSE SvcDateComplete END), SvcUserComplete = (CASE WHEN SvcUserComplete IS NULL THEN (SELECT EmployeeID  FROM tblUser WHERE UserName = @UserName) ELSE SvcUserComplete END) WHERE SvcOrderID = @SvcOrderID
+
+    SET @SvcConvertPartToEquipOnCreate = (SELECT TOP 1 ISNULL(SvcConvertPartToEquipOnCreate, 0) FROM tblCompanyPreference)
+
+    /* Covert parts to Equipment */
+    IF @SvcConvertPartToEquipOnCreate = 0
+    BEGIN
+      EXEC spConvertPartsToEquip @SvcOrderID, null, @Username
+    END
+  /* Old Code
+    INSERT INTO tblCustEquip (SvcDetailID, CustID, CustSiteID, ResidentID, LocationID, PartID, ManufactureID, ModelNum, SerialNum, InstalledByComp, InstalledBy, DateInstalled,
+      IsActive, UserCreated, TimeCreated, CF1, CF2, CF3, CF4, CF5, WarrantyStarted, WarrantyEnds, PartsWarrantyStart, PartsWarrantyEnd)
+    SELECT     dbo.tblSvcOrderDetail.SvcDetailID, dbo.tblSvcOrder.CustID, dbo.tblSvcOrder.CustSiteID, dbo.tblSvcOrder.ResidentID, dbo.tblSvcOrder.LocationID, dbo.tblParts.PartNumber, 
+                        dbo.tblParts.ManufacturerID, dbo.tblParts.ModelNumber, dbo.tblPartSerial.SerialNum, 1, dbo.tblSvcOrderDetail.TechID, 
+                        dbo.tblSvcOrderDetail.EntryDate, -1, @UserName, GetDate(), tblParts.CF1, tblParts.CF2, tblParts.CF3, tblParts.CF4, tblParts.CF5, 
+              dbo.piGetDate(GetDate()),  DATEADD(month, tblParts.Warranty, dbo.piGetDate(GetDate())), dbo.piGetDate(GetDate()), DATEADD(month, tblParts.PartsWarranty, dbo.piGetDate(GetDate()))
+    FROM         dbo.tblSvcOrderDetail INNER JOIN
+                        dbo.tblParts ON dbo.tblSvcOrderDetail.PartID = dbo.tblParts.PartID INNER JOIN
+                        dbo.tblSvcOrder ON dbo.tblSvcOrderDetail.SvcOrderID = dbo.tblSvcOrder.SvcOrderID LEFT OUTER JOIN
+                        dbo.tblPartSerial ON dbo.tblSvcOrderDetail.SvcDetailID = dbo.tblPartSerial.TransID2
+    WHERE     (tblSvcOrderDetail.SvcOrderID = @SvcOrderID AND dbo.tblSvcOrderDetail.TransType = 1 AND tblSvcOrderDetail.CustEquipID IS NULL AND ConvertPartToEquip = 1)
+
+    UPDATE tblSvcOrderDetail SET CustEquipID = (SELECT TOP 1 CustEquipID FROM tblCustEquip WHERE SvcDetailID = tblSvcOrderDetail.SvcDetailID) WHERE SvcOrderID = @SvcOrderID
+  */
+  END
+
+  BEGIN
+
+    /* Get Totals  */
+  /*
+    IF @InvoiceID = 0  /* When creating an invoice for a Job we dont really know what part and labor where performed until we finnish the job */
+    BEGIN
+      SET @StockCost = (SELECT ISNULL(ActualPartCost, 0) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+      SET @NonStockCost = (SELECT ISNULL(NonStockPartCost, 0) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+      SET @LaborCost = (SELECT ISNULL(ActualLaborCost, 0) FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+    END ELSE
+  */
+
+    BEGIN
+    SET @StockCost = ISNULL((SELECT SUM((ISNULL(UnitCost,0) * ISNULL(Quantity,0)) + ISNULL(AdditionalCost, 0))  FROM tblSvcOrderDetail WHERE (InvoiceID = @InvoiceID) AND (TransType = 1) AND (IsStockPart = 1)), 0)
+    SET @NonStockCost = ISNULL((SELECT SUM((ISNULL(UnitCost,0) * ISNULL(Quantity,0)) + ISNULL(AdditionalCost, 0)) FROM tblSvcOrderDetail WHERE (InvoiceID = @InvoiceID) AND (TransType = 1) AND (IsStockPart = 0)), 0)
+    SET @LaborCost = ISNULL((SELECT SUM((ISNULL(UnitCost,0) * ISNULL(ActualLaborQty,0)) + ISNULL(AdditionalCost, 0)) FROM tblSvcOrderDetail WHERE (InvoiceID = @InvoiceID) AND (TransType =2)), 0)
+    END
+
+    /* First Create Journal header */
+
+    SET @SvcOrderType = (SELECT SvcTypeID FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+
+    IF (@StockCost <> 0 ) OR (@NonStockCost <> 0) OR (@LaborCost <> 0)
+    BEGIN
+      INSERT INTO tblJournal (TransType, TransID, TransID2, Date, Description, JournalType, Sync, IsActive, UserCreated, TimeCreated) VALUES (1, @SvcOrderID, @InvoiceID, GetDate(), 'Billing Service Order#: ' + CAST(@SvcOrderID AS CHAR(20)), 2, 0, 1, @UserName, GetDate())
+      SET @JournalID = (SELECT @@Identity)
+    END
+
+
+    /* Then Journal Detail records */
+
+    IF (@StockCost <> 0) 
+    BEGIN
+      SET @FromAcct = (SELECT InProcessGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.StockGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+      SET @ToAcct = (SELECT tblGLAccountSet.ExpenseGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.StockGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+    
+      SET @TransAmt = (@StockCost)
+    
+      IF @TransAmt > 0
+        BEGIN
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, @TransAmt, 2, 1, @UserName, GetDate())
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, @TransAmt, 1, 1, @UserName, GetDate())    
+        END ELSE
+
+        BEGIN
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, ABS(@TransAmt), 1, 1, @UserName, GetDate())
+      INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, ABS(@TransAmt), 2, 1, @UserName, GetDate())    
+        END
+    END
+
+    IF (@NonStockCost <> 0) 
+    BEGIN
+      SET @FromAcct = (SELECT tblGLAccountSet.InProcessGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.NonStockGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+      SET @ToAcct = (SELECT tblGLAccountSet.ExpenseGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.NonStockGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+    
+      SET @TransAmt = (@NonStockCost )
+    
+      IF @TransAmt > 0
+        BEGIN
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, @TransAmt, 2, 1, @UserName, GetDate())
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, @TransAmt, 1, 1, @UserName, GetDate())    
+        END ELSE
+
+        BEGIN
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, ABS(@TransAmt), 1, 1, @UserName, GetDate())
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, ABS(@TransAmt), 2, 1, @UserName, GetDate())    
+        END
+    END
+
+    IF (@LaborCost <> 0) 
+    BEGIN
+      SET @FromAcct = (SELECT tblGLAccountSet.InProcessGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.LaborGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+      SET @ToAcct = (SELECT tblGLAccountSet.ExpenseGLAcctID FROM tblSvcOrderType INNER JOIN tblGLAccountSet ON tblSvcOrderType.LaborGLAcctSetID = tblGLAccountSet.GLAcctSetID WHERE SvcTypeID = @SvcOrderType)
+    
+      SET @TransAmt = (@LaborCost)
+    
+      IF @TransAmt > 0
+        BEGIN
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, @TransAmt, 2, 1, @UserName, GetDate())
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, @TransAmt, 1, 1, @UserName, GetDate())    
+        END ELSE
+
+        BEGIN
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @FromAcct, ABS(@TransAmt), 1, 1, @UserName, GetDate())
+          INSERT INTO tblJournalDetail (JournalID, GLAccountID, Amount, AmtType, IsActive, UserCreated, TimeCreated) VALUES (@JournalID, @ToAcct, ABS(@TransAmt), 2, 1, @UserName, GetDate())    
+        END
+    END
+
+  END  

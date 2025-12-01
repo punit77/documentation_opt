@@ -1,0 +1,255 @@
+queries:
+  - id: q1
+    title: "Query 1"
+    sql: |
+      declare @p3 int
+      set @p3=1
+      declare @p5 int
+      set @p5=0
+      exec sp_executesql N'SET @P1 = (SELECT COUNT(*) FROM tblSvcOrderDetail WHERE SvcOrderID = @P2 AND TransType = 1)
+      SET @P3 = (SELECT COUNT(*) FROM tblSvcOrderDetail WHERE SvcOrderID = @P4 AND TransType = 2)',N'@P1 int OUTPUT,
+      @P2 int,@P3 int OUTPUT,@P4 int',@p3 output,154491,@p5 output,154491
+      select @p3, @p5
+
+  - id: q2
+    title: "Query 2"
+    sql: |
+      exec sp_executesql N'DECLARE @SvcOrderID varchar(4000),
+        @UnrecievedPOCount int,
+        @UnpostedSlotCount int,
+        @UnprocessedPOReqCount int,
+        @UnusedPOItemsCount int
+
+      DECLARE
+        @TempTable TABLE (RecID int)
+
+      SET @SvcOrderID = @P1
+
+      INSERT INTO @TempTable(RecID) SELECT RecID FROM fnGetStringTempTbl(@SvcOrderID)
+
+      SET @UnrecievedPOCount = (SELECT COUNT(*) FROM tblPurchOrderDetail, @TempTable AS A
+        WHERE ItemStatus IN (1, 2) AND ShipLocationType = 2 AND ShipLocationID = A.RecID)
+
+
+      SET @UnpostedSlotCount = (SELECT COUNT(*) FROM tblSvcOrderSched, @TempTable AS A
+        WHERE SvcOrderID = A.RecID AND Status NOT IN (3,7))
+
+      SET @UnprocessedPOReqCount = (SELECT    COUNT(*)
+      FROM         tblSvcPurRequisitionParts INNER JOIN
+                            tblSvcPurRequisition ON tblSvcPurRequisitionParts.PurRequisitionID = tblSvcPurRequisition.PurRequisitionID
+                  INNER JOIN @TempTable AS A ON tblSvcPurRequisition.SvcOrderID = A.RecID
+      WHERE     (tblSvcPurRequisition.SvcOrderID = A.RecID) AND (tblSvcPurRequisitionParts.Quantity > ISNULL(tblSvcPurRequisitionParts.ProcessedQty, 0)))
+
+      set @UnusedPOItemsCount =
+          ( select count (*) from tblPOSOItems, @TempTable AS A
+            where (SvcOrderID = A.RecID) and (QtyReceived <> QtyUsed))
+
+
+      SELECT @UnrecievedPOCount AS UnrecievedPOCount,
+            @UnpostedSlotCount AS UnpostedSlotCount,
+            @UnprocessedPOReqCount AS UnprocessedPOReqCount,
+            @UnusedPOItemsCount as UnusedPOItemsCount',N'@P1 varchar(8000)','154491'
+
+  - id: q3
+    title: "Query 3"
+    sql: |
+      exec sp_executesql N'SELECT     InvoiceID, InvDate, Note, InvoiceNote
+      FROM         dbo.tblInvoice
+      WHERE Cleared = 1 AND TransType = 1
+       AND TransID = @P1 AND ISNULL(Void, 0) = 0',N'@P1 nvarchar(4000)',N'154491'
+
+  - id: q4
+    title: "Query 4"
+    sql: |
+      exec sp_executesql N'DECLARE @SvcOrderID int,
+        @IsInstall bit
+      SET @SvcOrderID = @P1
+
+      SET @IsInstall = (SELECT IsInstall FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID)
+
+      IF @IsInstall = 0
+      BEGIN
+        SELECT COUNT(*) AS ItemCount FROM tblSvcOrderDetail
+        WHERE SvcOrderID = @SvcOrderID
+            --AND ((SELECT IsInstall FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID) = 0)
+            AND Printable = 0
+            AND ISNULL(GroupDetailID, 0) = 0
+            AND LineSaleTotal <> 0
+      END
+      ELSE
+      BEGIN
+        SELECT COUNT(*) AS ItemCount FROM tblSvcOrderEst
+        WHERE SvcOrderID = @SvcOrderID
+            --AND ((SELECT IsInstall FROM tblSvcOrder WHERE SvcOrderID = @SvcOrderID) = 0)
+            AND Printable = 0
+            AND ISNULL(GroupDetailID, 0) = 0
+            AND LineSaleTotal <> 0
+            AND ((EstChangeID IS NULL) OR
+                                ((SELECT     Status
+                                    FROM         dbo.tblSvcOrderEstChange
+                                    WHERE     (EstChangeID = dbo.tblSvcOrderEst.EstChangeID)) = 1))
+      END',N'@P1 int',154491
+
+  - id: q5
+    title: "Query 5"
+    sql: |
+      exec [spCreateInvoice];1 @PartialyBilling=0,
+      @InvoiceType=1,@TransID=154491,@UserName='Admin               ',
+      @InvID=0,@ProgressPct=NULL,@ProgressAmt=NULL,@TaxRate=NULL,@InvoiceNote=NULL,
+      @CustID=NULL,@InvoiceDate=NULL
+
+  - id: q6
+    title: "Query 6"
+    sql: |
+      exec sp_executesql N'DECLARE @InvList TABLE (InvoiceID int)
+      INSERT INTO @InvList
+      SELECT RecID FROM dbo.[fnGetStringTempTbl]( @P1 )
+
+      SELECT     tblInvoice.InvoiceID, tblInvoice.CustID, tblInvoice.SiteID, tblInvoice.IsInstall, 
+      tblInvoice.SaleAmt, tblInvoice.AmtDue, tblInvoice.DateDue,
+                tblInvoice.TransType, tblInvoice.TransID
+      FROM         tblInvoice INNER JOIN
+        @InvList tmp ON tblInvoice.InvoiceID = tmp.InvoiceID',N'@P1 nvarchar(4000)',N'185966'
+
+  - id: q7
+    title: "Query 7"
+    sql: |
+      DECLARE @LoginName VARCHAR(100)
+      SET @LoginName = N'StarTechReports'
+
+      DECLARE @LoginPassword VARCHAR(100)
+      SET @LoginPassword = '*$%&*#^)&#Kj1'
+
+      DECLARE @LoginNameExists BIT;
+      SET @LoginNameExists = (SELECT COUNT(*) FROM master.dbo.syslogins WHERE loginname = @LoginName)
+
+      IF @LoginNameExists = 0
+      BEGIN
+        --*sp_addlogin----------------------------------------------------------------------------------
+      END
+
+      DECLARE @LoginMappingExists BIT;
+      SET @LoginMappingExists = (SELECT COUNT(*) FROM sysusers WHERE name = @LoginName)
+
+      IF @LoginMappingExists = 0
+      BEGIN
+        EXEC dbo.[sp_grantdbaccess] @loginame = @LoginName, @name_in_db = @LoginName
+        EXEC [sp_addrolemember] N'db_datareader', @LoginName
+      END
+
+      DECLARE @MaxID INT
+      DECLARE @Name VARCHAR(100)
+      DECLARE @UdfType VARCHAR(10)
+      DECLARE @Udf Table(ID INT IDENTITY(1,1), Name VARCHAR(100), UdfType VARCHAR(10))
+
+      INSERT INTO @Udf(Name, UdfType) SELECT name, xtype FROM sysobjects WHERE xtype IN ('FN', 'TF')
+
+      SELECT @MaxID = MAX(ID) FROM @Udf
+      WHILE @MaxID > 0
+      BEGIN
+        SELECT @Name = Name, @UdfType = UdfType FROM @Udf WHERE ID = @MaxID
+        
+        IF @UdfType = 'FN' EXEC('GRANT EXECUTE ON [' + @Name + '] TO ' + @LoginName)
+        IF @UdfType = 'TF' EXEC('GRANT SELECT ON [' + @Name + '] TO ' + @LoginName)
+        
+        SET @MaxID = @MaxID - 1
+      END
+
+  - id: q8
+    title: "Query 8"
+    sql: |
+      declare @p4 varchar(8000)
+      set @p4=''
+      declare @p5 bit
+      set @p5=0
+      exec sp_executesql N'/*DECLARE
+        @Result int,
+        @Emails varchar(1000)
+
+      SET @Emails = ''''
+
+      SET @Result = (SELECT TOP 1 ISNULL(SOSendSORptToEquipOnBilledStatus , 0)FROM tblCompanyPreference)
+
+      if (SELECT TOP 1 ISNULL(SOSendSORptToEquipOnBilledStatus , 0)FROM tblCompanyPreference) <> 0
+      BEGIN
+        SET @Emails =  (SELECT TOP 1 Emails
+          FROM tblCustEquip JOIN tblSvcOrder ON tblSvcOrder.CustEquipID = tblCustEquip.CustEquipID
+          WHERE tblSvcOrder.SvcOrderID = :TransID AND tblSvcOrder.Status = 2)
+      END
+
+      SET :Emails = @Emails
+      SET :Result = @Result */
+
+      DECLARE
+          @Result INT,
+          @Emails varchar(1000),
+          @EquipIDList varchar(4000)
+
+      SET @Emails = ''''
+
+      SELECT 
+          @Result = ISNULL(SOSendSORptToEquipOnBilledStatus, 0) FROM tblCompanyPreference
+
+      IF @Result <> 0
+      BEGIN
+          SELECT  @EquipIDList = CustEquipIDList FROM tblSvcOrder WHERE SvcOrderID = @P1 AND Status = 2
+
+          SELECT 
+              @Emails = STUFF(
+                  (SELECT '','' + Emails
+                  FROM tblCustEquip 
+                  WHERE Emails IS NOT NULL 
+                  AND Emails <> '''' 
+                  AND CustEquipID IN (SELECT value FROM dbo.Split_String(@EquipIDList, '',''))
+                  FOR XML PATH('''')), 1, 1, '''')
+      END
+
+      SET @P2 = @Emails
+      SET @P3 = @Result',N'@P1 int,@P2 varchar(8000) OUTPUT,@P3 bit OUTPUT',154491,@p4 output,@p5 output
+      select @p4, @p5
+
+  - id: q9
+    title: "Query 9"
+    sql: |
+      exec sp_executesql N'DECLARE @SvcOrderID int
+      SET @SvcOrderID = @P1
+
+      SELECT  PaymentID, CustID, PmntType, PmntDate, Description, PmntAmt, UnappliedAmt,
+                CAST(NULL AS money) AS AmtToApply, 0 AS InvoiceID
+      FROM         dbo.tblPayment
+      WHERE UnappliedAmt > 0
+            AND ((ISNULL(ReservedToSvcOrderID, 0) = 0) OR (ISNULL(ReservedToSvcOrderID, 0) = @SvcOrderID))
+      AND (CustID=14004)',N'@P1 int',154491
+
+  - id: q10
+    title: "Query 10"
+    sql: |
+      declare @p6 int
+      set @p6=0
+      exec sp_executesql N'/*DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int
+
+      SET  @SvcOrderID =:SvcOrderID
+      SET  @Check =:Check
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0, @SvcIsValid output
+
+      Set :RecCount  =@SvcIsValid  */
+      DECLARE @SvcOrderID int,@SvcIsValid int,
+      @Check int,@OpenedUserID int
+
+      SET  @SvcOrderID =@P1
+      SET  @Check =@P2
+      SET @OpenedUserID=@P3
+
+      exec [Sp_SvcOrderOpen]  @SvcOrderID,@Check,0,@OpenedUserID, @SvcIsValid output
+
+      Set @P4  =@SvcIsValid',N'@P1 int,@P2 int,@P3 nvarchar(4000),@P4 int OUTPUT',154491,2,N'1',@p6 output
+      select @p6
+
+  - id: q11
+    title: "Query 11"
+    sql: |
+      SELECT SvcAmtBilled,
+      Status
+      FROM tblSvcOrder WHERE SvcOrderID=0
